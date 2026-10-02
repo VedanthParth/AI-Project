@@ -24,6 +24,8 @@ def test_synth_prepare_baselines_train_evaluate(tmp_path):
     assert (tmp_path / "run" / "history.json").exists()
 
     main(["bkt", "--data", str(data), "--out", str(tmp_path / "bkt"), "--min-attempts", "10"])
+    main(["prereq", "--data", str(data), "--out", str(tmp_path / "prereq"), "--min-support", "5"])
+    assert (tmp_path / "prereq" / "prereq_graph.npz").exists()
     summary = json.loads((tmp_path / "bkt" / "bkt_summary.json").read_text())
     assert summary["fit"]["concepts_fitted"] > 0
     assert (tmp_path / "bkt" / "bkt_params.npz").exists()

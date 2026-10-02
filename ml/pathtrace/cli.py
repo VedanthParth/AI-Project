@@ -5,6 +5,7 @@
     baselines  fit and evaluate Random / Popularity / Markov / GRU next-item
     train      supervised training of the pointer network, then val/test evaluation
     bkt        fit per-concept BKT (the RL reward's student simulator)
+    prereq     infer a prerequisite graph from first-attempt order
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -99,6 +100,34 @@ def cmd_bkt(args: argparse.Namespace) -> None:
     print(f"\nsaved bkt_params.npz and bkt_summary.json to {args.out}")
 
 
+def cmd_prereq(args: argparse.Namespace) -> None:
+    from pathtrace.preprocess import load_processed
+    from pathtrace.prereq import infer_and_report
+
+    proc = load_processed(args.data)
+    summary = infer_and_report(
+        proc,
+        args.out,
+        content_path=args.content,
+        min_support=args.min_support,
+        min_precedence=args.min_precedence,
+        min_proximity=args.min_proximity,
+        proximity_window=args.proximity_window,
+    )
+    graph = summary["graph"]
+    print(
+        f"{graph['edges']} edges ({graph['edges_before_reduction']} before transitive reduction); "
+        f"{graph['concepts_with_prerequisites']} concepts have prerequisites"
+    )
+    for name, row in summary.get("agreement_with_content", {}).items():
+        print(f"  {name:28} edges {row['edges']:.3f}   random pairs {row['random_pairs']:.3f}")
+    for split, row in summary["violations"].items():
+        print(
+            f"  {split}: violations per path, students {row['student_paths']:.3f} vs random {row['random_paths']:.3f}"
+        )
+    print(f"saved prereq_graph.npz and prereq_summary.json to {args.out}")
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -155,6 +184,16 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--max-guess", type=float, default=0.3)
     p.add_argument("--max-slip", type=float, default=0.3)
     p.set_defaults(func=cmd_bkt)
+
+    p = sub.add_parser("prereq", help="infer a prerequisite graph from training students' first-attempt order")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--out", type=Path, required=True, help="output directory (prereq_graph.npz, prereq_summary.json)")
+    p.add_argument("--content", type=Path, default=None, help="Info_Content.csv, to check edges against Junyi's hierarchy")
+    p.add_argument("--min-support", type=int, default=30, help="students who started both concepts, in different windows")
+    p.add_argument("--min-precedence", type=float, default=0.9, help="share of them who started the prerequisite first")
+    p.add_argument("--min-proximity", type=float, default=0.2, help="share who started the dependent concept soon after")
+    p.add_argument("--proximity-window", type=int, default=5, help="'soon' = within this many new concepts")
+    p.set_defaults(func=cmd_prereq)
 
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)
