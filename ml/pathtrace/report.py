@@ -185,7 +185,11 @@ def _table_rows(result: dict) -> tuple[list[str], list[list[str]]]:
     body = [["Chance (analytic)", "—"] + [f"{chance[key]:.3f}" for key, _ in METRIC_COLUMNS] + ["—"] * 4]
     for row in result["rows"].values():
         vs = row.get("vs_strongest")
-        vs_text = "—" if vs is None else f"{vs['mean']:+.3f} [{vs['ci_low']:+.3f}, {vs['ci_high']:+.3f}], p={vs['p_value']:.3f}"
+        if vs is None:
+            vs_text = "—"
+        else:
+            p_text = "p<0.001" if vs["p_value"] < 0.001 else f"p={vs['p_value']:.3f}"
+            vs_text = f"{vs['mean']:+.3f} [{vs['ci_low']:+.3f}, {vs['ci_high']:+.3f}], {p_text}"
         label = "– " + row["label"].strip() if row["label"].startswith("  ") else row["label"]
         body.append(
             [label, str(row["seeds"])]
@@ -234,7 +238,11 @@ def _write_tables(result: dict, out: Path) -> None:
 # --------------------------------------------------------------------------- figures
 
 
-def _style(ax) -> None:
+def _style(ax, integer_x: bool = False) -> None:
+    from matplotlib.ticker import MaxNLocator
+
+    if integer_x:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_facecolor("white")
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
@@ -294,7 +302,7 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
                                textcoords="offset points", ha="right", fontsize=8, color=INK_2)
         right.set(title="Validation NDCG@3", xlabel="Epoch")
         for ax in (left, right):
-            _style(ax)
+            _style(ax, integer_x=True)
         seeds = f"mean of {len(histories)} seeds, band = min to max" if len(histories) > 1 else "one seed"
         fig.suptitle(f"Supervised training ({seeds})", fontsize=10, color=INK_2, y=1.02)
         fig.savefig(out / "fig_training.png")
@@ -316,8 +324,10 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
             if len(series) > 1:
                 ax.fill_between(epochs, values.min(axis=0), values.max(axis=0), color=SERIES_1, alpha=0.15, linewidth=0)
             ax.set(title=title, xlabel="RL epoch (0 = supervised start)")
-            _style(ax)
+            _style(ax, integer_x=True)
         left.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+        seeds = f"mean of {len(rl_runs)} seeds, band = min to max" if len(rl_runs) > 1 else "one seed"
+        fig.suptitle(f"RL fine-tuning ({seeds})", fontsize=10, color=INK_2, y=1.02)
         fig.savefig(out / "fig_rl.png")
         plt.close(fig)
 
@@ -343,6 +353,9 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
             axes[1].axvline(0, color=AXIS, linewidth=1)
         for ax in axes:
             _style(ax)
+        fig.suptitle(
+            "Blue: pointer-network variants. Grey: baselines and references.", fontsize=9, color=INK_2, y=1.0
+        )
         fig.savefig(out / "fig_methods.png")
         plt.close(fig)
     log(f"wrote figures to {out}")
