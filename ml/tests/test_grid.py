@@ -36,6 +36,15 @@ def test_grid_runs_everything_then_resumes_without_redoing_work(tiny_log, tmp_pa
     gain_methods = load_json(runs / "gain_test.json")["methods"]
     assert {"pointer-seed0", "rl-seed0", "markov", "bkt_oracle"} <= set(gain_methods)
 
+    from pathtrace.report import build_report
+
+    result = build_report(data, runs, tmp_path / "results", n_boot=50, log=lambda _: None)
+    assert {"random", "markov", "pointer", "pointer-nokt", "rl", "rl-ema", "students", "bkt_oracle"} <= set(result["rows"])
+    assert result["rows"]["bkt_oracle"]["reward_share"][0] == 1.0
+    assert "vs_strongest" in result["rows"]["pointer"]
+    for name in ("main_table.md", "main_table.csv", "main_table.tex", "results.json", "fig_training.png", "fig_rl.png", "fig_methods.png"):
+        assert (tmp_path / "results" / name).exists(), name
+
     second: list[str] = []
     run_grid(data, tmp_path / "runs", log=second.append, **kwargs)
     assert not [line for line in second if line.startswith("[run]  ") and "learning gain" not in line]

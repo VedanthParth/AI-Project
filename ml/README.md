@@ -12,11 +12,14 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 54 tests, about 25 s
+.venv/bin/python -m pytest          # 55 tests, about 45 s
 ```
 
-Training on the full dataset needs a GPU (Colab is enough). On a 4-core CPU the
-pointer network takes about 4 ms per training example per epoch.
+Training on the full dataset needs a GPU. On a 4-core CPU the pointer network takes about
+4 ms per training example per epoch, so the full grid runs on Colab: open
+[`notebooks/pathtrace_colab.ipynb`](notebooks/pathtrace_colab.ipynb) in Colab with a GPU
+runtime and run all cells. It keeps data and runs on Google Drive and resumes after a
+disconnect.
 
 ## Data
 
@@ -31,7 +34,22 @@ unzip junyi.zip && rm junyi.zip    # Log_Problem.csv (3.0 GB), Info_Content.csv,
 
 `ml/data/` and `ml/runs/` are git-ignored, so raw data and run outputs never get committed.
 
-## Commands
+## The whole grid in two commands
+
+```bash
+python -m pathtrace grid --data data/processed/junyi --runs runs/junyi --content data/raw/junyi/Info_Content.csv
+python -m pathtrace report --data data/processed/junyi --runs runs/junyi --out results/junyi
+```
+
+`grid` runs every step below for one dataset (simulators, 4 baselines, 3 model variants x 5
+seeds, RL x 5 seeds, 3 RL sensitivity runs, DKT learning gain) and skips any step whose
+output already exists. `report` turns the run folders into the paper's main table
+(`main_table.md`, `.csv`, `.tex`: mean ± std over seeds, BKT reward as a share of the oracle,
+prerequisite violations, DKT gain, and the NDCG@3 difference to the strongest baseline with a
+paired bootstrap CI and p-value) and figures (`fig_training.png`, `fig_rl.png`,
+`fig_methods.png`).
+
+## Individual commands
 
 ```bash
 # 1. Raw log -> student-level 70/15/15 split -> sliding-window examples
@@ -138,4 +156,5 @@ The Paper lane should update these sections to match the code:
 - **New evaluation.** DKT learning gain E_p (`pathtrace/dkt.py`) and the share of the BKT
   oracle's reward, alongside the ranking metrics.
 
-Not built yet: the `report` command and the Colab notebook.
+- **Section 5.1, batch size.** The Colab grid uses batch size 256 to keep the GPU busy; report
+  that value for every number that comes from it.

@@ -10,6 +10,7 @@
     gain       DKT learning gain of recommended paths
     finetune   corrected REINFORCE fine-tuning against the BKT reward
     grid       the full experiment grid for one dataset (resumable)
+    report     paper tables and figures from a dataset's runs
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -206,6 +207,14 @@ def cmd_grid(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_report(args: argparse.Namespace) -> None:
+    from pathtrace.report import build_report
+
+    result = build_report(args.data, args.runs, args.out, split=args.split, n_boot=args.bootstrap)
+    print((Path(args.out) / "main_table.md").read_text())
+    print(f"strongest baseline: {result['strongest_baseline']}")
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -325,6 +334,14 @@ def main(argv: list[str] | None = None) -> None:
     add_dataclass_args(p, ModelConfig)
     add_dataclass_args(p, TrainConfig)
     p.set_defaults(func=cmd_grid)
+
+    p = sub.add_parser("report", help="paper tables (Markdown, CSV, LaTeX) and figures from a dataset's runs")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--runs", type=Path, required=True, help="the runs directory the grid wrote")
+    p.add_argument("--out", type=Path, required=True, help="output directory for tables and figures")
+    p.add_argument("--split", choices=("val", "test"), default="test")
+    p.add_argument("--bootstrap", type=int, default=1000)
+    p.set_defaults(func=cmd_report)
 
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)
