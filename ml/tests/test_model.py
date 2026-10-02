@@ -43,6 +43,39 @@ def test_teacher_forcing_scores_targets(model_and_batch):
     assert model.path_loss(batch, 3).item() == pytest.approx(expected.item(), rel=1e-5)
 
 
+def _step_nll(model, batch):
+    out = model.decode(
+        model.encode_student(batch), model.encode_candidates(batch.candidates), 3, "teacher", batch.target_slots
+    )
+    nll = -F.log_softmax(out.logits, -1).gather(2, batch.target_slots.unsqueeze(-1)).squeeze(-1)
+    return out.logits, nll
+
+
+def test_first_step_weight_reweights_step_one(model_and_batch):
+    model, batch = model_and_batch
+    model.eval()
+    model.cfg = ModelConfig(dropout=0.0, first_step_weight=3.0)
+    logits, nll = _step_nll(model, batch)
+    expected = ((3.0 * nll[:, 0] + nll[:, 1] + nll[:, 2]) / 5.0).mean()
+    assert model.step_loss(logits, batch).item() == pytest.approx(expected.item(), rel=1e-5)
+
+
+def test_tie_aware_first_step_accepts_any_tied_target(model_and_batch):
+    model, batch = model_and_batch
+    model.eval()
+    logits, nll = _step_nll(model, batch)
+    batch.first_group = torch.ones_like(batch.first_group)
+    exact = model.step_loss(logits, batch).item()
+    model.cfg = ModelConfig(dropout=0.0, first_step_ties=True)
+    assert model.step_loss(logits, batch).item() == pytest.approx(exact, rel=1e-6)  # no ties, same loss
+
+    batch.first_group = torch.full_like(batch.first_group, 2)
+    step_one = -torch.logsumexp(F.log_softmax(logits[:, 0], -1).gather(1, batch.target_slots[:, :2]), dim=1)
+    expected = ((step_one + nll[:, 1] + nll[:, 2]) / 3.0).mean()
+    assert model.step_loss(logits, batch).item() == pytest.approx(expected.item(), rel=1e-5)
+    assert model.step_loss(logits, batch).item() < exact
+
+
 def test_kt_mask_ignores_padding(model_and_batch):
     model, batch = model_and_batch
     mask = model.kt_mask(batch, torch.device("cpu"))

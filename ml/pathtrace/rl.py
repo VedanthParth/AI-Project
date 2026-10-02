@@ -39,7 +39,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 from pathtrace import bkt, metrics, prereq
 from pathtrace.batching import iterate_batches
@@ -205,8 +204,7 @@ def finetune(
             loss = pg_loss - cfg.entropy_weight * entropy
             if cfg.sup_weight > 0:
                 teacher = model.decode(state, cand, k, "teacher", target_slots=b.target_slots)
-                sup = F.cross_entropy(teacher.logits.reshape(-1, teacher.logits.size(-1)), b.target_slots.reshape(-1))
-                loss = loss + cfg.sup_weight * sup
+                loss = loss + cfg.sup_weight * model.step_loss(teacher.logits, b)
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)

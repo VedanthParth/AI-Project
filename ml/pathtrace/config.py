@@ -52,6 +52,8 @@ class ModelConfig:
     ff_dim: int = _opt(128, "Transformer feed-forward size")
     dropout: float = _opt(0.1, "dropout on embeddings and inside the Transformer")
     kt_weight: float = _opt(0.5, "lambda_KT, weight of the auxiliary knowledge-tracing loss (0 disables it)")
+    first_step_weight: float = _opt(1.0, "weight of step 1 in the path loss, relative to each later step")
+    first_step_ties: bool = _opt(False, "step-1 loss accepts any target tied for the first time window")
 
 
 @dataclass

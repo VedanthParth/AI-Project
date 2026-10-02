@@ -90,6 +90,8 @@ PyTorch threads made two jobs on 4 cores run about 30x slower.
 | Quick run on a subsample | `prepare --max-students 5000` |
 | Without the KT head | `train --kt-weight 0` |
 | Without the candidate Transformer | `train --attn-layers 0` |
+| Weight the first decoding step more | `train --first-step-weight 3` |
+| Any target tied for the first window counts at step 1 | `train --first-step-ties true` |
 | Another seed | `train --seed 1` |
 | RL without the supervised anchor | `finetune --sup-weight 0` |
 | RL with the moving-average baseline | `finetune --baseline ema` |

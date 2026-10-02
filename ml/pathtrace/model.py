@@ -158,7 +158,27 @@ class PathRecommender(nn.Module):
             mode="teacher",
             target_slots=batch.target_slots,
         )
-        return F.cross_entropy(out.logits.reshape(-1, out.logits.size(-1)), batch.target_slots.reshape(-1))
+        return self.step_loss(out.logits, batch)
+
+    def step_loss(self, logits: torch.Tensor, batch: Batch) -> torch.Tensor:
+        """Teacher-forced cross-entropy averaged over steps, step 1 weighted by ``first_step_weight``.
+
+        With ``first_step_ties`` the step-1 term is -log of the total probability
+        of the targets tied for the first time window, so picking any of them
+        counts as right, as in the first-step metric. The order among tied
+        targets is arbitrary (concept id), so the plain loss asks for one of
+        them in particular.
+        """
+        log_probs = F.log_softmax(logits, dim=-1)  # (B, K, N)
+        nll = -log_probs.gather(2, batch.target_slots.unsqueeze(-1)).squeeze(-1)  # (B, K)
+        if self.cfg.first_step_ties:
+            steps = torch.arange(nll.size(1), device=nll.device)
+            tied = steps.unsqueeze(0) < batch.first_group.unsqueeze(1)
+            first = log_probs[:, 0].gather(1, batch.target_slots).masked_fill(~tied, NEG_INF)
+            nll = torch.cat([-torch.logsumexp(first, dim=1, keepdim=True), nll[:, 1:]], dim=1)
+        weights = torch.ones(nll.size(1), device=nll.device)
+        weights[0] = self.cfg.first_step_weight
+        return (nll * weights).sum(dim=1).mean() / weights.sum()
 
     def kt_logits(self, batch: Batch) -> torch.Tensor:
         """Logit that attempt t+1 is correct given attempts <= t, shape (B, T-1)."""

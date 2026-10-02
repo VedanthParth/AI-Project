@@ -19,6 +19,7 @@ class Batch:
     candidates: torch.Tensor  # (B, N) long concept ids
     target_slots: torch.Tensor  # (B, K) long positions in ``candidates``
     targets: torch.Tensor  # (B, K) long concept ids
+    first_group: torch.Tensor  # (B,) long, leading targets tied for the first step
     index: np.ndarray  # (B,) example indices into the split
 
     def to(self, device: torch.device) -> "Batch":
@@ -29,6 +30,7 @@ class Batch:
             candidates=self.candidates.to(device),
             target_slots=self.target_slots.to(device),
             targets=self.targets.to(device),
+            first_group=self.first_group.to(device),
             index=self.index,
         )
 
@@ -49,6 +51,7 @@ def make_batch(inter: Interactions, ex: Examples, index: np.ndarray, max_history
         candidates=torch.from_numpy(ex.candidates[index].astype(np.int64)),
         target_slots=torch.from_numpy(ex.target_slots[index].astype(np.int64)),
         targets=torch.from_numpy(ex.targets[index].astype(np.int64)),
+        first_group=torch.from_numpy(ex.first_group[index].astype(np.int64)),
         index=np.asarray(index),
     )
 
