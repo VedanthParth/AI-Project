@@ -16,3 +16,12 @@ build/
 # System files
 .DS_Store
 *.log
+
+# Python / ML pipeline
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+ml/.venv/
+ml/data/
+ml/runs/
