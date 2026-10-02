@@ -12,7 +12,7 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 38 tests, about 15 s
+.venv/bin/python -m pytest          # 54 tests, about 25 s
 ```
 
 Training on the full dataset needs a GPU (Colab is enough). On a 4-core CPU the
@@ -43,14 +43,27 @@ python -m pathtrace baselines --data data/processed/junyi --out runs/junyi/basel
 # 3. Pointer network: supervised training with early stopping, then val + test
 python -m pathtrace train --data data/processed/junyi --out runs/junyi/pointer-seed0 --seed 0
 
-# 4. Per-concept BKT (the RL reward's student simulator), fitted on the train split
-python -m pathtrace bkt --data data/processed/junyi --out runs/junyi/bkt
+# 4. Student simulators and structure, all fitted on the train split
+python -m pathtrace bkt --data data/processed/junyi --out runs/junyi/bkt          # RL reward (per-concept BKT)
+python -m pathtrace prereq --data data/processed/junyi --out runs/junyi/prereq \
+    --content data/raw/junyi/Info_Content.csv                                      # prerequisite graph
+python -m pathtrace dkt --data data/processed/junyi --out runs/junyi/dkt          # held-out evaluator
 
-# 5. Re-evaluate a checkpoint
+# 5. RL fine-tuning of a supervised checkpoint against the BKT reward
+python -m pathtrace finetune --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt \
+    --bkt runs/junyi/bkt/bkt_params.npz --prereq runs/junyi/prereq/prereq_graph.npz --out runs/junyi/rl-seed0
+
+# 6. DKT learning gain of every method's paths (plus random, the students' own, and the BKT oracle)
+python -m pathtrace gain --data data/processed/junyi --dkt runs/junyi/dkt/dkt.pt \
+    --runs runs/junyi/baselines runs/junyi/pointer-seed0 runs/junyi/rl-seed0 --bkt runs/junyi/bkt/bkt_params.npz
+
+# 7. Re-evaluate a checkpoint
 python -m pathtrace evaluate --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt --split test
 ```
 
-`python -m pathtrace <command> --help` lists every option with its default.
+`python -m pathtrace <command> --help` lists every option with its default. When running
+several jobs on one CPU, give each `--threads 1` (before the command name): oversubscribed
+PyTorch threads made two jobs on 4 cores run about 30x slower.
 
 | Experiment | Flags |
 | --- | --- |
@@ -60,6 +73,9 @@ python -m pathtrace evaluate --data data/processed/junyi --checkpoint runs/junyi
 | Without the KT head | `train --kt-weight 0` |
 | Without the candidate Transformer | `train --attn-layers 0` |
 | Another seed | `train --seed 1` |
+| RL without the supervised anchor | `finetune --sup-weight 0` |
+| RL with the moving-average baseline | `finetune --baseline ema` |
+| No prerequisite penalty | `finetune --violation-weight 0` |
 
 Each run directory holds `model.pt` (checkpoint), `history.json` (per-epoch train and
 validation losses and metrics, for the training-curve figure), `metrics.json`
@@ -112,5 +128,14 @@ The Paper lane should update these sections to match the code:
   (1 - m) * p_learn rather than a sampled outcome. With the paper's single parameter
   set, every unseen candidate has the same expected gain, 0.105.
 
-Not built yet: the DKT evaluator, the inferred prerequisite graph, the corrected REINFORCE
-fine-tuning, the `report` command and the Colab notebook.
+- **Section 4.6 and 8(3), prerequisites.** The prerequisite map is no longer empty: it is
+  inferred from training students' first-attempt order (see `pathtrace/prereq.py`), and it
+  agrees with Junyi's own topic hierarchy and learning stages far above chance.
+- **Section 5.2 and Algorithm 1, RL.** The baseline is the greedy path's reward
+  (self-critical), the entropy bonus is applied, a supervised term (0.5) anchors the policy,
+  and training runs up to 20 epochs with early stopping on validation reward. The
+  moving-average baseline is kept as an ablation, now applied before its update.
+- **New evaluation.** DKT learning gain E_p (`pathtrace/dkt.py`) and the share of the BKT
+  oracle's reward, alongside the ranking metrics.
+
+Not built yet: the `report` command and the Colab notebook.
