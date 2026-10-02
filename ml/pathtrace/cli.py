@@ -4,6 +4,7 @@
     prepare    raw log -> student split + path examples
     baselines  fit and evaluate Random / Popularity / Markov / GRU next-item
     train      supervised training of the pointer network, then val/test evaluation
+    bkt        fit per-concept BKT (the RL reward's student simulator)
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -76,6 +77,28 @@ def cmd_train(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_bkt(args: argparse.Namespace) -> None:
+    from pathtrace.bkt import fit_and_report
+    from pathtrace.preprocess import load_processed
+
+    proc = load_processed(args.data)
+    summary = fit_and_report(
+        proc, args.out, min_attempts=args.min_attempts, max_guess=args.max_guess, max_slip=args.max_slip
+    )
+    print("\nheld-out log-likelihood per attempt (val students; higher is better)")
+    for name, value in summary["heldout_loglik_per_attempt"].items():
+        print(f"  {name:16}{value:10.4f}")
+    for split, rows in summary["reward"].items():
+        print(f"\nexpected BKT reward of a {proc.data_cfg.path_len}-concept path, {split}")
+        print(f"{'':18}{'oracle':>10}{'random':>10}{'target':>10}{'spread':>10}")
+        for name, r in rows.items():
+            print(
+                f"  {name:16}{r['oracle_reward']:10.4f}{r['random_path_reward']:10.4f}"
+                f"{r['target_path_reward']:10.4f}{r['gain_spread_within_example']:10.4f}"
+            )
+    print(f"\nsaved bkt_params.npz and bkt_summary.json to {args.out}")
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -124,6 +147,14 @@ def main(argv: list[str] | None = None) -> None:
     add_dataclass_args(p, ModelConfig)
     add_dataclass_args(p, TrainConfig)
     p.set_defaults(func=cmd_train)
+
+    p = sub.add_parser("bkt", help="fit per-concept BKT on the train split and summarise the reward")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--out", type=Path, required=True, help="output directory (bkt_params.npz, bkt_summary.json)")
+    p.add_argument("--min-attempts", type=int, default=50, help="fewer training attempts -> global fallback")
+    p.add_argument("--max-guess", type=float, default=0.3)
+    p.add_argument("--max-slip", type=float, default=0.3)
+    p.set_defaults(func=cmd_bkt)
 
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)

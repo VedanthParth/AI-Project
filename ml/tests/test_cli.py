@@ -23,6 +23,11 @@ def test_synth_prepare_baselines_train_evaluate(tmp_path):
     assert (tmp_path / "run" / "model.pt").exists()
     assert (tmp_path / "run" / "history.json").exists()
 
+    main(["bkt", "--data", str(data), "--out", str(tmp_path / "bkt"), "--min-attempts", "10"])
+    summary = json.loads((tmp_path / "bkt" / "bkt_summary.json").read_text())
+    assert summary["fit"]["concepts_fitted"] > 0
+    assert (tmp_path / "bkt" / "bkt_params.npz").exists()
+
     out = tmp_path / "eval.json"
     main(["evaluate", "--data", str(data), "--checkpoint", str(tmp_path / "run" / "model.pt"), "--bootstrap", "20", "--out", str(out)])
     assert json.loads(out.read_text())["n"] == result["splits"]["test"]["n"]
