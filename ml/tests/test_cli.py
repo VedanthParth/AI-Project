@@ -34,6 +34,12 @@ def test_synth_prepare_baselines_train_evaluate(tmp_path):
     ])
     methods = json.loads(gain.read_text())["methods"]
     assert {"random", "students", "popularity", "run", "bkt_oracle"} <= set(methods)
+    main([
+        "finetune", "--data", str(data), "--checkpoint", str(tmp_path / "run" / "model.pt"),
+        "--bkt", str(tmp_path / "bkt" / "bkt_params.npz"), "--prereq", str(tmp_path / "prereq" / "prereq_graph.npz"),
+        "--out", str(tmp_path / "rl"), "--max-epochs", "1", "--bootstrap", "20", "--max-history", "30",
+    ])
+    assert json.loads((tmp_path / "rl" / "metrics.json").read_text())["splits"]["test"]["n"] > 0
     summary = json.loads((tmp_path / "bkt" / "bkt_summary.json").read_text())
     assert summary["fit"]["concepts_fitted"] > 0
     assert (tmp_path / "bkt" / "bkt_params.npz").exists()

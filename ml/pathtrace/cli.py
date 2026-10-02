@@ -8,6 +8,7 @@
     prereq     infer a prerequisite graph from first-attempt order
     dkt        train the DKT evaluator (held out from training the recommenders)
     gain       DKT learning gain of recommended paths
+    finetune   corrected REINFORCE fine-tuning against the BKT reward
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -160,6 +161,32 @@ def cmd_gain(args: argparse.Namespace) -> None:
         save_json(report, args.out)
 
 
+def cmd_finetune(args: argparse.Namespace) -> None:
+    from pathtrace.bkt import BKTParams
+    from pathtrace.preprocess import load_processed
+    from pathtrace.prereq import PrereqGraph
+    from pathtrace.rl import RLConfig, finetune
+
+    proc = load_processed(args.data)
+    results = finetune(
+        proc,
+        args.checkpoint,
+        BKTParams.load(args.bkt),
+        PrereqGraph.load(args.prereq),
+        dataclass_from_args(RLConfig, args),
+        args.out,
+    )
+    start = results["start"]
+    print(f"\nbest epoch {results['best_epoch']} (0 = the supervised checkpoint was not improved)")
+    print(f"  val reward at start {start['reward']['mean']:.4f} ({start['share_of_oracle']:.1%} of oracle)")
+    for split in ("val", "test"):
+        r = results["splits"][split]
+        print(
+            f"  {split}: reward {r['reward']['mean']:.4f} ({r['share_of_oracle']:.1%} of oracle), "
+            f"violations/path {r['violations_per_path']:.3f}, NDCG@3 {r['metrics']['ndcg']['mean']:.4f}"
+        )
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -178,6 +205,10 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="pathtrace", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--threads", type=int, default=0,
+        help="PyTorch CPU threads (0 = default). Use 1 when running several jobs at once: oversubscribed threads slow everything down sharply",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("synth", help="write a synthetic Junyi-shaped log")
@@ -249,6 +280,17 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--out", type=Path, default=None, help="optional JSON output path")
     p.set_defaults(func=cmd_gain)
 
+    from pathtrace.rl import RLConfig
+
+    p = sub.add_parser("finetune", help="REINFORCE fine-tuning of a trained pointer network against the BKT reward")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--checkpoint", type=Path, required=True, help="supervised model.pt to start from")
+    p.add_argument("--bkt", type=Path, required=True, help="bkt_params.npz from the bkt command")
+    p.add_argument("--prereq", type=Path, required=True, help="prereq_graph.npz from the prereq command")
+    p.add_argument("--out", type=Path, required=True, help="run directory")
+    add_dataclass_args(p, RLConfig)
+    p.set_defaults(func=cmd_finetune)
+
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)
     p.add_argument("--checkpoint", type=Path, required=True)
@@ -259,6 +301,10 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(func=cmd_evaluate)
 
     args = parser.parse_args(argv)
+    if args.threads:
+        import torch
+
+        torch.set_num_threads(args.threads)
     args.func(args)
 
 
