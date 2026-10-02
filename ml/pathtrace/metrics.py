@@ -53,12 +53,14 @@ def summarize(values: dict[str, np.ndarray], n_boot: int = 0, seed: int = 0) -> 
     return out
 
 
-def chance(num_candidates: int, path_len: int) -> dict[str, float]:
+def chance(num_candidates: int, path_len: int, mean_first_group: float = 1.0) -> dict[str, float]:
     """Expected metrics for a uniformly random path of K distinct candidates.
 
     With N candidates of which K are targets, the number of hits in a random
     K-path is hypergeometric. Each rank holds a target with probability K/N,
-    so precision, recall and NDCG all equal K/N.
+    so precision, recall and NDCG all equal K/N. A random first pick is a
+    correct first step with probability (first-group size)/N, so pass the
+    split's mean ``first_group`` when targets can share a time window.
     """
     n, k = num_candidates, path_len
     p_first_at = []
@@ -72,8 +74,14 @@ def chance(num_candidates: int, path_len: int) -> dict[str, float]:
         "hit_rate": 1.0 - comb(n - k, k) / comb(n, k),
         "ndcg": k / n,
         "mrr": sum(p / rank for rank, p in enumerate(p_first_at, start=1)),
-        "first_step": 1.0 / n,
+        "first_step": mean_first_group / n,
     }
+
+
+def split_chance(num_candidates: int, path_len: int, first_group: np.ndarray) -> dict[str, float]:
+    """``chance`` for one split, using that split's time-window ties."""
+    mean_group = float(np.mean(first_group)) if len(first_group) else 1.0
+    return chance(num_candidates, path_len, mean_group)
 
 
 def auc(labels: np.ndarray, scores: np.ndarray) -> float:

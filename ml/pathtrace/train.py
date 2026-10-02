@@ -158,7 +158,10 @@ def train_model(
     results = {
         "best_epoch": best_epoch,
         "parameters": n_params,
-        "chance": metrics.chance(proc.data_cfg.num_candidates, k),
+        "chance": {
+            split: metrics.split_chance(proc.data_cfg.num_candidates, k, proc.examples[split].first_group)
+            for split in ("val", "test")
+        },
         "splits": {},
     }
     for split in ("val", "test"):

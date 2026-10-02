@@ -195,7 +195,13 @@ def run_baselines(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     k = proc.data_cfg.path_len
-    results: dict = {"chance": metrics.chance(proc.data_cfg.num_candidates, k), "baselines": {}}
+    results: dict = {
+        "chance": {
+            split: metrics.split_chance(proc.data_cfg.num_candidates, k, proc.examples[split].first_group)
+            for split in ("val", "test")
+        },
+        "baselines": {},
+    }
     for name in names:
         log(f"baseline {name}")
         baseline = make_baseline(name, model_cfg, cfg, log)

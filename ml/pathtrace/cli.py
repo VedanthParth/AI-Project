@@ -57,7 +57,7 @@ def cmd_baselines(args: argparse.Namespace) -> None:
         proc, names, dataclass_from_args(ModelConfig, args), dataclass_from_args(TrainConfig, args), args.out
     )
     for split in ("val", "test"):
-        rows = {"chance": results["chance"]}
+        rows = {"chance": results["chance"][split]}
         rows.update({name: _means(r[split]) for name, r in results["baselines"].items()})
         _print_table(f"{split} ({proc.stats[f'{split}_examples']:,} examples)", rows)
 
@@ -73,7 +73,7 @@ def cmd_train(args: argparse.Namespace) -> None:
         result = results["splits"][split]
         _print_table(
             f"{split} ({result['n']:,} examples, KT AUC {result['kt_auc']:.4f})",
-            {"chance": results["chance"], "pointer": _means(result)},
+            {"chance": results["chance"][split], "pointer": _means(result)},
         )
 
 

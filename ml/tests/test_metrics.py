@@ -70,3 +70,13 @@ def test_top_k_breaks_ties_at_random():
     picks = metrics.top_k(np.zeros((20_000, 5)), 1, np.random.default_rng(0))[:, 0]
     counts = np.bincount(picks, minlength=5) / len(picks)
     assert np.allclose(counts, 0.2, atol=0.02)
+
+
+def test_chance_first_step_accounts_for_tied_targets():
+    rng = np.random.default_rng(5)
+    samples, n, k = 100_000, 20, 3
+    group = rng.integers(1, k + 1, samples)
+    target = np.argsort(rng.random((samples, n)), axis=1)[:, :k]
+    pred = np.argsort(rng.random((samples, n)), axis=1)[:, :k]
+    observed = metrics.per_example(pred, target, group)["first_step"].mean()
+    assert observed == pytest.approx(metrics.split_chance(n, k, group)["first_step"], abs=0.004)
