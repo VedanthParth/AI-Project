@@ -12,7 +12,7 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 25 tests, about 15 s
+.venv/bin/python -m pytest          # 38 tests, about 15 s
 ```
 
 Training on the full dataset needs a GPU (Colab is enough). On a 4-core CPU the
@@ -20,8 +20,15 @@ pointer network takes about 4 ms per training example per epoch.
 
 ## Data
 
-Download the [Junyi Academy Online Learning Activity dataset](https://www.kaggle.com/datasets/junyiacademy/learning-activity-public-dataset-by-junyi-academy)
-(Kaggle account needed) and put `Log_Problem.csv` at `ml/data/raw/junyi/Log_Problem.csv`.
+The [Junyi Academy Online Learning Activity dataset](https://www.kaggle.com/datasets/junyiacademy/learning-activity-public-dataset-by-junyi-academy)
+is a public download (1.6 GB zip, no Kaggle account needed):
+
+```bash
+mkdir -p data/raw/junyi && cd data/raw/junyi
+curl -L -o junyi.zip https://www.kaggle.com/api/v1/datasets/download/junyiacademy/learning-activity-public-dataset-by-junyi-academy
+unzip junyi.zip && rm junyi.zip    # Log_Problem.csv (3.0 GB), Info_Content.csv, Info_UserData.csv
+```
+
 `ml/data/` and `ml/runs/` are git-ignored, so raw data and run outputs never get committed.
 
 ## Commands
@@ -36,7 +43,10 @@ python -m pathtrace baselines --data data/processed/junyi --out runs/junyi/basel
 # 3. Pointer network: supervised training with early stopping, then val + test
 python -m pathtrace train --data data/processed/junyi --out runs/junyi/pointer-seed0 --seed 0
 
-# 4. Re-evaluate a checkpoint
+# 4. Per-concept BKT (the RL reward's student simulator), fitted on the train split
+python -m pathtrace bkt --data data/processed/junyi --out runs/junyi/bkt
+
+# 5. Re-evaluate a checkpoint
 python -m pathtrace evaluate --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt --split test
 ```
 
@@ -70,6 +80,14 @@ nothing and must never appear in the paper.**
 
 The Paper lane should update these sections to match the code:
 
+- **Section 6.1, ordering.** Junyi rounds `timestamp_TW` to 15-minute windows, and
+  88.6% of a student's consecutive attempts share a timestamp. The order of attempts
+  at different concepts inside one window is therefore unknown. Attempts are sorted by
+  window, then concept, then `exercise_problem_repeat_session` and `problem_number`
+  (which order a concept's own attempts exactly). Cuts fall only on window boundaries,
+  concepts started in the same window as the last target are never negatives, and
+  `first_step` accepts any target from the first window.
+
 - **Section 6.2, examples.** One example per cut point in each student's sequence of
   new concepts (capped at 20 per student), not one per student. The history is every
   attempt before the cut; the target is the next 3 new concepts. `--windows last`
@@ -88,5 +106,11 @@ The Paper lane should update these sections to match the code:
   one the student attempted next?), the only order-sensitive metric. Precision@3
   equals Recall@3 by construction, so report one of them.
 
-Not built yet (Week 2): per-concept BKT and DKT simulators, the inferred prerequisite
-graph, and the corrected REINFORCE fine-tuning.
+- **Section 4.6, BKT.** Parameters are fitted per concept by EM on the training split
+  (guess and slip capped at 0.3; concepts with fewer than 50 attempts use a global fit),
+  not fixed at 0.30/0.15/0.20/0.10. The reward is the exact expected gain
+  (1 - m) * p_learn rather than a sampled outcome. With the paper's single parameter
+  set, every unseen candidate has the same expected gain, 0.105.
+
+Not built yet: the DKT evaluator, the inferred prerequisite graph, the corrected REINFORCE
+fine-tuning, the `report` command and the Colab notebook.
