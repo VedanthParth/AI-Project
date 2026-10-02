@@ -28,7 +28,7 @@ from pathtrace.batching import Batch, iterate_batches
 from pathtrace.config import ModelConfig, TrainConfig
 from pathtrace.model import NEG_INF
 from pathtrace.preprocess import Processed, first_attempts
-from pathtrace.utils import get_device, save_json, set_seed
+from pathtrace.utils import get_device, load_json, save_json, set_seed
 
 
 class Baseline:
@@ -195,12 +195,14 @@ def run_baselines(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     k = proc.data_cfg.path_len
+    # Merge into an existing file, so baselines can be run one at a time and resumed.
+    existing = load_json(out / "baselines.json") if (out / "baselines.json").exists() else {}
     results: dict = {
         "chance": {
             split: metrics.split_chance(proc.data_cfg.num_candidates, k, proc.examples[split].first_group)
             for split in ("val", "test")
         },
-        "baselines": {},
+        "baselines": existing.get("baselines", {}),
     }
     for name in names:
         log(f"baseline {name}")

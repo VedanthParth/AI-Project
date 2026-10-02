@@ -9,6 +9,7 @@
     dkt        train the DKT evaluator (held out from training the recommenders)
     gain       DKT learning gain of recommended paths
     finetune   corrected REINFORCE fine-tuning against the BKT reward
+    grid       the full experiment grid for one dataset (resumable)
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -187,6 +188,24 @@ def cmd_finetune(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_grid(args: argparse.Namespace) -> None:
+    from pathtrace.grid import run_grid
+
+    run_grid(
+        args.data,
+        args.runs,
+        seeds=args.seeds,
+        variants=args.variants,
+        content=args.content,
+        model_cfg=dataclass_from_args(ModelConfig, args),
+        train_cfg=dataclass_from_args(TrainConfig, args),
+        rl=not args.no_rl,
+        sensitivity=not args.no_sensitivity,
+        gain=not args.no_gain,
+        gain_max_examples=args.gain_max_examples,
+    )
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -290,6 +309,22 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--out", type=Path, required=True, help="run directory")
     add_dataclass_args(p, RLConfig)
     p.set_defaults(func=cmd_finetune)
+
+    from pathtrace.grid import VARIANTS
+
+    p = sub.add_parser("grid", help="run the full experiment grid for one dataset, skipping finished steps")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--runs", type=Path, required=True, help="root directory for all runs of this dataset")
+    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
+    p.add_argument("--variants", nargs="+", default=list(VARIANTS), choices=list(VARIANTS))
+    p.add_argument("--content", type=Path, default=None, help="Info_Content.csv for the prerequisite-graph checks")
+    p.add_argument("--no-rl", action="store_true", help="skip RL fine-tuning")
+    p.add_argument("--no-sensitivity", action="store_true", help="skip the seed-0 RL sensitivity runs")
+    p.add_argument("--no-gain", action="store_true", help="skip the DKT learning-gain evaluation")
+    p.add_argument("--gain-max-examples", type=int, default=20_000, help="test examples scored for learning gain")
+    add_dataclass_args(p, ModelConfig)
+    add_dataclass_args(p, TrainConfig)
+    p.set_defaults(func=cmd_grid)
 
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)
