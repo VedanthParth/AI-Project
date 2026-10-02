@@ -36,6 +36,26 @@ def test_load_log_sorts_by_time_and_parses_correctness(tmp_path):
     assert correct.tolist() == [1, 0]
 
 
+def test_attempts_within_a_time_window_are_grouped_by_concept(tmp_path):
+    # One student, all in the same 15-minute window; the file order is scrambled.
+    rows = [
+        ("2019-08-01 10:00:00 UTC", "s1", "b", 2, 1, "True"),
+        ("2019-08-01 10:00:00 UTC", "s1", "a", 1, 2, "False"),
+        ("2019-08-01 10:00:00 UTC", "s1", "b", 1, 1, "False"),
+        ("2019-08-01 10:00:00 UTC", "s1", "a", 1, 1, "True"),
+        ("2019-08-01 09:45:00 UTC", "s1", "c", 1, 1, "True"),
+    ]
+    columns = ["timestamp_TW", "uuid", "ucid", "problem_number", "exercise_problem_repeat_session", "is_correct"]
+    path = tmp_path / "log.csv"
+    pd.DataFrame(rows, columns=columns).to_csv(path, index=False)
+
+    inter = load_log(path, DataConfig())
+
+    concepts, correct = inter.sequence(0)
+    assert inter.concept_names[concepts].tolist() == ["c", "a", "a", "b", "b"]
+    assert correct.tolist() == [1, 1, 0, 0, 1]  # a: session 1 then 2; b: problem 1 then 2
+
+
 def test_splits_are_disjoint_and_complete(tiny_processed):
     parts = [set(tiny_processed.splits[name].tolist()) for name in SPLITS]
     assert not (parts[0] & parts[1] or parts[0] & parts[2] or parts[1] & parts[2])
@@ -51,19 +71,29 @@ def test_examples_are_next_new_concepts_with_valid_candidates(tiny_processed):
         assert len(ex) > 0
         for i in range(len(ex)):
             sequence, _ = tiny_processed.inter.sequence(ex.student[i])
+            times = tiny_processed.inter.times(ex.student[i])
             distinct, firsts = first_attempts(sequence)
-            j = np.searchsorted(firsts, ex.cut[i])
-            history = sequence[: ex.cut[i]]
-            assert firsts[j] == ex.cut[i] >= cfg.min_history
+            cut = ex.cut[i]
+            j = np.searchsorted(firsts, cut)  # distinct concepts in the history
+            history = sequence[:cut]
+            assert cut >= cfg.min_history
+            assert times[cut - 1] < times[cut], "the history must end at a time-window boundary"
+            assert times[firsts[j]] == times[cut], "the first target starts in the cut's window"
             assert ex.targets[i].tolist() == distinct[j : j + cfg.path_len].tolist()
             assert not np.isin(ex.targets[i], history).any()
+            group = ex.first_group[i]
+            target_windows = times[firsts[j : j + cfg.path_len]]
+            assert (target_windows[:group] == times[cut]).all()
+            assert group == cfg.path_len or target_windows[group] != times[cut]
             cands = ex.candidates[i]
             assert len(set(cands.tolist())) == cfg.num_candidates
             assert cands[ex.target_slots[i]].tolist() == ex.targets[i].tolist()
             negatives = np.setdiff1d(cands, ex.targets[i])
-            unseen_pool = tiny_processed.inter.num_concepts - (j + cfg.path_len)
+            tied = distinct[j + cfg.path_len :][times[firsts[j + cfg.path_len :]] == target_windows[-1]]
+            unseen_pool = tiny_processed.inter.num_concepts - (j + cfg.path_len + len(tied))
             if unseen_pool >= cfg.num_candidates - cfg.path_len:  # else the small-vocabulary fallback applies
                 assert not np.isin(negatives, history).any(), "exclude_seen must keep seen concepts out"
+                assert not np.isin(negatives, tied).any(), "concepts tied with the last target can't be negatives"
 
 
 def test_popularity_uses_training_students_only(tiny_processed):
@@ -75,14 +105,18 @@ def test_popularity_uses_training_students_only(tiny_processed):
     assert not np.array_equal(concept_popularity(inter, splits["val"]), expected)
 
 
-def test_last_window_mode_reproduces_paper_setup(tiny_processed):
-    cfg = DataConfig(num_candidates=12, windows="last")
+def test_last_window_mode_keeps_each_students_latest_cut(tiny_processed):
     train = tiny_processed.splits["train"]
-    ex = build_examples(tiny_processed.inter, train, tiny_processed.popularity, cfg, seed=0)
-    assert len(set(ex.student.tolist())) == len(ex)
-    for i in range(len(ex)):
-        distinct, _ = first_attempts(tiny_processed.inter.sequence(ex.student[i])[0])
-        assert ex.targets[i].tolist() == distinct[-cfg.path_len :].tolist()
+    pop = tiny_processed.popularity
+    last = build_examples(tiny_processed.inter, train, pop, DataConfig(num_candidates=12, windows="last"), seed=0)
+    every = build_examples(
+        tiny_processed.inter, train, pop, DataConfig(num_candidates=12, max_windows_per_student=10_000), seed=0
+    )
+    assert len(set(last.student.tolist())) == len(last)
+    latest = {}
+    for s, cut in zip(every.student.tolist(), every.cut.tolist()):
+        latest[s] = max(cut, latest.get(s, 0))
+    assert {s: c for s, c in zip(last.student.tolist(), last.cut.tolist())} == latest
 
 
 def test_popularity_negatives_prefer_popular_concepts(tiny_processed):

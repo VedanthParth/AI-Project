@@ -165,7 +165,7 @@ def evaluate_baseline(
 ) -> tuple[dict, np.ndarray]:
     ex = proc.examples[split]
     pred = metrics.top_k(baseline.score(proc, split), k, np.random.default_rng(seed))
-    values = metrics.per_example(pred, ex.target_slots)
+    values = metrics.per_example(pred, ex.target_slots, ex.first_group)
     return {"n": len(ex), "metrics": metrics.summarize(values, n_boot, seed)}, pred
 
 

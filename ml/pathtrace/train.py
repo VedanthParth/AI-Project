@@ -55,7 +55,7 @@ def evaluate_model(
     kt_loss = F.binary_cross_entropy_with_logits(torch.from_numpy(scores), torch.from_numpy(labels)).item()
     result = {
         "n": len(ex),
-        "metrics": metrics.summarize(metrics.per_example(pred, ex.target_slots), n_boot, cfg.seed),
+        "metrics": metrics.summarize(metrics.per_example(pred, ex.target_slots, ex.first_group), n_boot, cfg.seed),
         "path_loss": path_loss_sum / (len(ex) * k),
         "kt_loss": kt_loss,
         "kt_auc": metrics.auc(labels, scores),

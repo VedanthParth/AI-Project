@@ -2,9 +2,13 @@
 
 Pipeline (``prepare``):
 
-1. ``load_log`` reads only the four needed columns with pyarrow (dictionary-
+1. ``load_log`` reads only the needed columns with pyarrow (dictionary-
    encoded ids, so the full 16M-row Junyi log fits in memory), optionally
-   subsamples students, and sorts each student's attempts by time.
+   subsamples students, and sorts each student's attempts. Junyi rounds
+   timestamps to 15-minute windows, so the true order of attempts at
+   different concepts inside one window is unknown. Within a window, attempts
+   are grouped by concept, and each concept's attempts follow its exercise
+   session and problem number, which are always consistent with time.
 2. ``split_students`` assigns whole students to train/val/test, so no student
    appears in more than one split.
 3. ``concept_popularity`` counts, per concept, how many *training* students
@@ -15,6 +19,12 @@ Pipeline (``prepare``):
    a cut at d_j gives: history = every attempt before the first attempt at
    d_j; target path = (d_j, ..., d_{j+K-1}), the next K new concepts; and
    a candidate set = the targets plus N-K sampled negatives, shuffled.
+   Cuts fall only on time-window boundaries (d_j must be the first new
+   concept of its window and the history ends where that window starts), so
+   the arbitrary order inside a window never leaks into the history. Concepts
+   first attempted in the same window as the last target are never used as
+   negatives, and ``first_group`` records how many leading targets share the
+   first target's window (any of them counts as a correct first step).
 """
 
 from __future__ import annotations
@@ -37,7 +47,7 @@ PAD = "<pad>"
 
 @dataclass
 class Interactions:
-    """All students' attempts, concatenated and sorted by (student, time).
+    """All students' attempts, concatenated and sorted by (student, time window).
 
     Student ``s`` owns rows ``offsets[s]:offsets[s + 1]``. Concept ids run
     1..C; id 0 is reserved for padding.
@@ -48,6 +58,7 @@ class Interactions:
     offsets: np.ndarray  # (S + 1,) int64
     concept: np.ndarray  # (M,) int32
     correct: np.ndarray  # (M,) int8
+    time: np.ndarray  # (M,) float64: seconds since the epoch, or the raw ordering value
 
     @property
     def num_students(self) -> int:
@@ -65,6 +76,9 @@ class Interactions:
         lo, hi = self.offsets[student], self.offsets[student + 1]
         return self.concept[lo:hi], self.correct[lo:hi]
 
+    def times(self, student: int) -> np.ndarray:
+        return self.time[self.offsets[student] : self.offsets[student + 1]]
+
 
 @dataclass
 class Examples:
@@ -75,6 +89,7 @@ class Examples:
     targets: np.ndarray  # (E, K) int32, in first-attempt order
     candidates: np.ndarray  # (E, N) int32, shuffled
     target_slots: np.ndarray  # (E, K) int64: candidates[e, target_slots[e, k]] == targets[e, k]
+    first_group: np.ndarray  # (E,) int8: leading targets that share the first target's time window
 
     def __len__(self) -> int:
         return len(self.student)
@@ -113,7 +128,7 @@ def _parse_time(values: pd.Series) -> np.ndarray:
     if parsed.isna().any():
         bad = text[parsed.isna()].head(3).tolist()
         raise ValueError(f"could not parse {int(parsed.isna().sum())} timestamps, e.g. {bad}")
-    return parsed.to_numpy("datetime64[ns]").astype(np.int64).astype(np.float64)
+    return (parsed.to_numpy("datetime64[ns]").astype(np.int64) // 10**9).astype(np.float64)
 
 
 def _dense_ids(codes: np.ndarray, names: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -126,11 +141,20 @@ def _dense_ids(codes: np.ndarray, names: np.ndarray) -> tuple[np.ndarray, np.nda
     return rank[inverse], used_names[order]
 
 
+def _optional_order(df: pd.DataFrame, column: str) -> np.ndarray:
+    """An optional within-concept ordering column (0 when absent or empty)."""
+    if not column or column not in df or df[column].isna().all():
+        return np.zeros(len(df), dtype=np.float64)
+    return pd.to_numeric(df[column], errors="coerce").fillna(0).to_numpy(np.float64)
+
+
 def load_log(path: str | Path, cfg: DataConfig) -> Interactions:
     cols = [cfg.student_col, cfg.concept_col, cfg.correct_col, cfg.time_col]
+    order_cols = [c for c in (cfg.session_col, cfg.problem_col) if c]
     as_dict = pa.dictionary(pa.int32(), pa.string())
     convert = pacsv.ConvertOptions(
-        include_columns=cols,
+        include_columns=cols + order_cols,
+        include_missing_columns=True,
         column_types={
             cfg.student_col: as_dict,
             cfg.concept_col: as_dict,
@@ -158,9 +182,12 @@ def load_log(path: str | Path, cfg: DataConfig) -> Interactions:
     )
     correct = _parse_correct(df[cfg.correct_col])
     time = _parse_time(df[cfg.time_col])
+    session = _optional_order(df, cfg.session_col)
+    problem = _optional_order(df, cfg.problem_col)
 
-    # Primary key: student; then time; ties keep file order.
-    order = np.lexsort((np.arange(len(df)), time, student))
+    # Student, then time window, then concept (attempts inside a window are
+    # grouped by concept), then exercise session and problem number.
+    order = np.lexsort((np.arange(len(df)), problem, session, concept, time, student))
     counts = np.bincount(student, minlength=len(student_uuid))
     return Interactions(
         student_uuid=student_uuid,
@@ -168,6 +195,7 @@ def load_log(path: str | Path, cfg: DataConfig) -> Interactions:
         offsets=np.concatenate([[0], np.cumsum(counts)]).astype(np.int64),
         concept=(concept[order] + 1).astype(np.int32),
         correct=correct[order],
+        time=time[order],
     )
 
 
@@ -245,31 +273,44 @@ def build_examples(
     cdf = np.cumsum(weights / weights.sum())
     rng = np.random.default_rng(seed)
 
-    rows_student, rows_cut, rows_targets, rows_cands, rows_slots = [], [], [], [], []
+    rows_student, rows_cut, rows_targets, rows_cands, rows_slots, rows_group = [], [], [], [], [], []
     for s in students:
         sequence, _ = inter.sequence(s)
+        times = inter.times(s)
         distinct, firsts = first_attempts(sequence)
-        cuts = np.arange(1, len(distinct) - k + 1)
-        cuts = cuts[firsts[cuts] >= cfg.min_history]
+        window = times[firsts]  # time window of each new concept's first attempt
+        m = len(distinct)
+        cuts = np.arange(1, m - k + 1)
+        cuts = cuts[window[cuts] != window[cuts - 1]]  # first new concept of its window
+        cut_rows = np.searchsorted(times, window[cuts], side="left")  # where that window starts
+        keep = cut_rows >= cfg.min_history
+        cuts, cut_rows = cuts[keep], cut_rows[keep]
         if cuts.size == 0:
             continue
         if cfg.windows == "last":
-            cuts = cuts[-1:]
+            cuts, cut_rows = cuts[-1:], cut_rows[-1:]
         elif cuts.size > cfg.max_windows_per_student:
-            cuts = np.sort(rng.choice(cuts, cfg.max_windows_per_student, replace=False))
-        for j in cuts:
+            pick = np.sort(rng.choice(cuts.size, cfg.max_windows_per_student, replace=False))
+            cuts, cut_rows = cuts[pick], cut_rows[pick]
+        for j, cut in zip(cuts, cut_rows):
             targets = distinct[j : j + k]
+            # Concepts first tried in the last target's window are as much "next"
+            # as the targets, so they can't be negatives either.
+            end = j + k
+            while end < m and window[end] == window[j + k - 1]:
+                end += 1
             # distinct[:j] is exactly the set of concepts seen in the history.
-            excluded = distinct[: j + k] if cfg.exclude_seen else targets
+            excluded = distinct[:end] if cfg.exclude_seen else distinct[j:end]
             negatives = _sample_negatives(rng, cdf, n - k, excluded, targets)
             if negatives is None:
                 continue
             perm = rng.permutation(n)
             rows_student.append(s)
-            rows_cut.append(firsts[j])
+            rows_cut.append(cut)
             rows_targets.append(targets)
             rows_cands.append(np.concatenate([targets, negatives])[perm])
             rows_slots.append(np.argsort(perm)[:k])
+            rows_group.append(int(np.sum(window[j : j + k] == window[j])))
 
     if not rows_student:
         return Examples(
@@ -278,6 +319,7 @@ def build_examples(
             targets=np.zeros((0, k), np.int32),
             candidates=np.zeros((0, n), np.int32),
             target_slots=np.zeros((0, k), np.int64),
+            first_group=np.zeros(0, np.int8),
         )
     return Examples(
         student=np.asarray(rows_student, np.int32),
@@ -285,6 +327,7 @@ def build_examples(
         targets=np.stack(rows_targets).astype(np.int32),
         candidates=np.stack(rows_cands).astype(np.int32),
         target_slots=np.stack(rows_slots).astype(np.int64),
+        first_group=np.asarray(rows_group, np.int8),
     )
 
 
@@ -306,6 +349,7 @@ def prepare(log_path: str | Path, out_dir: str | Path, cfg: DataConfig) -> Proce
         "correct_rate": float(inter.correct.mean()) if inter.num_interactions else 0.0,
         **{f"{name}_students": len(splits[name]) for name in SPLITS},
         **{f"{name}_examples": len(examples[name]) for name in SPLITS},
+        "first_window_ties": float(np.mean(examples["test"].first_group > 1)) if len(examples["test"]) else 0.0,
     }
     processed = Processed(inter, splits, examples, popularity, cfg, stats)
     save_processed(processed, out_dir)
@@ -322,6 +366,7 @@ def save_processed(p: Processed, out_dir: str | Path) -> None:
         offsets=p.inter.offsets,
         concept=p.inter.concept,
         correct=p.inter.correct,
+        time=p.inter.time,
         popularity=p.popularity,
         **{f"split_{name}": p.splits[name] for name in SPLITS},
     )
@@ -340,6 +385,7 @@ def load_processed(data_dir: str | Path) -> Processed:
             offsets=z["offsets"],
             concept=z["concept"],
             correct=z["correct"],
+            time=z["time"],
         )
         popularity = z["popularity"]
         splits = {name: z[f"split_{name}"] for name in SPLITS}

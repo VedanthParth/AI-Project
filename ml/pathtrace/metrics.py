@@ -3,8 +3,9 @@
 A prediction is an ordered path of candidate slots, shape (E, K'); the
 ground truth is the target path, shape (E, K). Set metrics (precision,
 recall, hit rate, NDCG, MRR) ignore the order of the targets; ``first_step``
-checks that the first recommended concept is the one the student actually
-attempted next.
+checks that the first recommended concept is one the student actually
+started next. When several targets were first attempted in the same time
+window, ``first_group`` says how many leading targets count as "next".
 """
 
 from __future__ import annotations
@@ -16,10 +17,12 @@ import numpy as np
 METRICS = ("precision", "recall", "hit_rate", "ndcg", "mrr", "first_step")
 
 
-def per_example(pred: np.ndarray, target: np.ndarray) -> dict[str, np.ndarray]:
+def per_example(pred: np.ndarray, target: np.ndarray, first_group: np.ndarray | None = None) -> dict[str, np.ndarray]:
     pred = np.asarray(pred)
     target = np.asarray(target)
     k_pred, k_true = pred.shape[1], target.shape[1]
+    group = np.ones(len(target), dtype=int) if first_group is None else np.asarray(first_group)
+    in_first_group = np.arange(k_true)[None, :] < group[:, None]
     hits = (pred[:, :, None] == target[:, None, :]).any(axis=2)  # (E, K')
     n_hits = hits.sum(axis=1)
     discounts = 1.0 / np.log2(np.arange(2, k_pred + 2))
@@ -31,7 +34,7 @@ def per_example(pred: np.ndarray, target: np.ndarray) -> dict[str, np.ndarray]:
         "hit_rate": (n_hits > 0).astype(float),
         "ndcg": (hits * discounts).sum(axis=1) / ideal,
         "mrr": np.where(first_rank > 0, 1.0 / np.maximum(first_rank, 1), 0.0),
-        "first_step": (pred[:, 0] == target[:, 0]).astype(float),
+        "first_step": ((pred[:, :1] == target) & in_first_group).any(axis=1).astype(float),
     }
 
 

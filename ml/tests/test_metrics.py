@@ -44,6 +44,13 @@ def test_partial_hit_values():
     assert values["ndcg"][0] == pytest.approx((1 / np.log2(3)) / ideal)
 
 
+def test_first_step_accepts_any_target_from_the_first_time_window():
+    target = np.array([[4, 7, 1], [4, 7, 1]])
+    pred = np.array([[7, 0, 0], [7, 0, 0]])
+    values = metrics.per_example(pred, target, first_group=np.array([2, 1]))
+    assert values["first_step"].tolist() == [1.0, 0.0]
+
+
 def test_bootstrap_interval_contains_mean():
     values = {"x": np.random.default_rng(1).random(500)}
     summary = metrics.summarize(values, n_boot=500, seed=0)["x"]

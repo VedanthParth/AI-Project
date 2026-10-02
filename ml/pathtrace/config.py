@@ -27,6 +27,8 @@ class DataConfig:
     concept_col: str = _opt("ucid", "concept id column in the raw log")
     correct_col: str = _opt("is_correct", "correctness column (True/False or 1/0)")
     time_col: str = _opt("timestamp_TW", "ordering column (timestamp or numeric)")
+    session_col: str = _opt("exercise_problem_repeat_session", "orders a concept's attempts within a time window ('' = none)")
+    problem_col: str = _opt("problem_number", "orders attempts within an exercise session ('' = none)")
     max_students: int | None = _opt(None, "subsample this many students (default: all)", int)
     path_len: int = _opt(3, "K, the number of concepts in a recommended path")
     num_candidates: int = _opt(20, "N, the size of each candidate set")
