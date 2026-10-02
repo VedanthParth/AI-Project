@@ -26,6 +26,14 @@ def test_synth_prepare_baselines_train_evaluate(tmp_path):
     main(["bkt", "--data", str(data), "--out", str(tmp_path / "bkt"), "--min-attempts", "10"])
     main(["prereq", "--data", str(data), "--out", str(tmp_path / "prereq"), "--min-support", "5"])
     assert (tmp_path / "prereq" / "prereq_graph.npz").exists()
+    main(["dkt", "--data", str(data), "--out", str(tmp_path / "dkt"), "--max-epochs", "1", "--hidden-dim", "16"])
+    gain = tmp_path / "gain.json"
+    main([
+        "gain", "--data", str(data), "--dkt", str(tmp_path / "dkt" / "dkt.pt"), "--runs", str(tmp_path / "baselines"),
+        str(tmp_path / "run"), "--bkt", str(tmp_path / "bkt" / "bkt_params.npz"), "--rollouts", "2", "--out", str(gain),
+    ])
+    methods = json.loads(gain.read_text())["methods"]
+    assert {"random", "students", "popularity", "run", "bkt_oracle"} <= set(methods)
     summary = json.loads((tmp_path / "bkt" / "bkt_summary.json").read_text())
     assert summary["fit"]["concepts_fitted"] > 0
     assert (tmp_path / "bkt" / "bkt_params.npz").exists()

@@ -6,6 +6,8 @@
     train      supervised training of the pointer network, then val/test evaluation
     bkt        fit per-concept BKT (the RL reward's student simulator)
     prereq     infer a prerequisite graph from first-attempt order
+    dkt        train the DKT evaluator (held out from training the recommenders)
+    gain       DKT learning gain of recommended paths
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -128,6 +130,36 @@ def cmd_prereq(args: argparse.Namespace) -> None:
     print(f"saved prereq_graph.npz and prereq_summary.json to {args.out}")
 
 
+def cmd_dkt(args: argparse.Namespace) -> None:
+    from pathtrace.dkt import DKTConfig, train_dkt
+    from pathtrace.preprocess import load_processed
+
+    cfg = DKTConfig(hidden_dim=args.hidden_dim, max_epochs=args.max_epochs, seed=args.seed, device=args.device)
+    summary = train_dkt(load_processed(args.data), cfg, args.out)
+    print(f"\nDKT best epoch {summary['best_epoch']}: val AUC {summary['val']['auc']:.4f}, test AUC {summary['test']['auc']:.4f}")
+    print(f"saved dkt.pt and dkt_summary.json to {args.out}")
+
+
+def cmd_gain(args: argparse.Namespace) -> None:
+    from pathtrace.dkt import collect_paths, gain_report, load_dkt
+    from pathtrace.preprocess import load_processed
+    from pathtrace.utils import get_device
+
+    proc = load_processed(args.data)
+    model = load_dkt(args.dkt, get_device(args.device))
+    paths = collect_paths(proc, args.split, args.runs, args.bkt)
+    report = gain_report(
+        proc, model, args.split, paths, max_examples=args.max_examples, attempts=args.attempts, rollouts=args.rollouts
+    )
+    print(f"\nDKT learning gain E_p on {args.split} ({report['examples']:,} examples)")
+    print(f"{'':16}{'before':>10}{'after':>10}{'E_p':>10}{'95% CI':>20}")
+    for name, r in sorted(report["methods"].items(), key=lambda kv: -kv[1]["gain"]["mean"]):
+        g = r["gain"]
+        print(f"{name:16}{r['before']:10.4f}{r['after']:10.4f}{g['mean']:10.4f}   [{g['ci_low']:.4f}, {g['ci_high']:.4f}]")
+    if args.out:
+        save_json(report, args.out)
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -194,6 +226,28 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--min-proximity", type=float, default=0.2, help="share who started the dependent concept soon after")
     p.add_argument("--proximity-window", type=int, default=5, help="'soon' = within this many new concepts")
     p.set_defaults(func=cmd_prereq)
+
+    p = sub.add_parser("dkt", help="train the DKT evaluator on the train split")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--out", type=Path, required=True, help="output directory (dkt.pt, dkt_summary.json)")
+    p.add_argument("--hidden-dim", type=int, default=128)
+    p.add_argument("--max-epochs", type=int, default=10)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--device", default="auto")
+    p.set_defaults(func=cmd_dkt)
+
+    p = sub.add_parser("gain", help="DKT learning gain of saved paths (plus random, student and BKT-oracle paths)")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--dkt", type=Path, required=True, help="dkt.pt from the dkt command")
+    p.add_argument("--runs", type=Path, nargs="*", default=[], help="run directories holding preds*_<split>.npy")
+    p.add_argument("--bkt", type=Path, default=None, help="bkt_params.npz, to include the BKT oracle's paths")
+    p.add_argument("--split", choices=("val", "test"), default="test")
+    p.add_argument("--max-examples", type=int, default=None, help="score a fixed random subset of examples")
+    p.add_argument("--attempts", type=int, default=3, help="simulated attempts per path concept")
+    p.add_argument("--rollouts", type=int, default=8, help="simulations averaged per example")
+    p.add_argument("--device", default="auto")
+    p.add_argument("--out", type=Path, default=None, help="optional JSON output path")
+    p.set_defaults(func=cmd_gain)
 
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)
