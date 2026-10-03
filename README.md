@@ -34,7 +34,7 @@ students, 3.2 MB) and serves the built frontend. Nothing else needs downloading.
   `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY`, or paste a key in the app.
 - **Frontend development.** Run `npm run dev` in `frontend/` alongside the server; Vite
   proxies `/api` to port 8000.
-- **Tests.** `pytest backend/tests` and `pytest ml`.
+- **Tests.** `python -m pip install pytest`, then `python -m pytest backend/tests` and `python -m pytest ml`.
 
 To serve a different model, export a new bundle with `python -m pathtrace export` (see
 [`ml/README.md`](ml/README.md)) and point `PATHTRACE_BUNDLE` at it.

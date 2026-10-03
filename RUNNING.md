@@ -67,6 +67,12 @@ Then open **http://localhost:8000**. Stop the server with Ctrl+C. Next time, onl
 
 1. Open the notebook in Colab:
    **[pathtrace_colab.ipynb](https://colab.research.google.com/github/VedanthParth/AI-Project/blob/pathtrace-rebuild/ml/notebooks/pathtrace_colab.ipynb)**
+   - The notebook is only on the `pathtrace-rebuild` branch, at `ml/notebooks/pathtrace_colab.ipynb`,
+     so it doesn't show up on GitHub's default `master` view.
+   - If the link doesn't open: in Colab, use **File → Open notebook → GitHub**, enter
+     `VedanthParth/AI-Project`, choose the `pathtrace-rebuild` branch, and pick
+     `ml/notebooks/pathtrace_colab.ipynb`. Or use **File → Upload notebook** with
+     `ml\notebooks\pathtrace_colab.ipynb` from your clone.
 2. **Runtime → Change runtime type → T4 GPU** (or any GPU), then **Save**.
 3. **Runtime → Run all.** Allow access to Google Drive when asked.
 
@@ -112,8 +118,9 @@ python -m pathtrace train --data demo/processed --out demo/runs/pointer-seed0 --
 `train` prints the loss and validation NDCG@3 every epoch, then val and test tables. Delete the
 `demo/` folder afterwards.
 
-Tests: `pytest` in `ml/` (68 tests, about 30 s) and `pytest backend/tests` from the repository
-root (6 tests).
+Tests, with the virtual environment active: `python -m pip install pytest` once, then
+`python -m pytest` in `ml/` (68 tests, about 30 s) and `python -m pytest backend/tests` from the
+repository root (6 tests).
 
 To run on the real data instead, follow [`ml/README.md`](ml/README.md): it downloads the
 dataset and lists every command. Training on a CPU is slow (about 3 minutes per epoch on a
@@ -141,4 +148,4 @@ dataset and lists every command. Training on a CPU is slow (about 3 minutes per 
 **Terminal** (section 3 above):
 
 11. The `train` output, showing epochs and the val/test tables.
-12. `pytest` passing.
+12. `python -m pytest` passing.
