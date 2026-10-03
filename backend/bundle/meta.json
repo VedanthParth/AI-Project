@@ -1,0 +1,184 @@
+{
+  "created": "2026-10-03",
+  "source": {
+    "data": "junyi-10k",
+    "runs": "junyi-10k",
+    "checkpoint": "pointer-ties-seed0",
+    "split": "test"
+  },
+  "dataset": {
+    "name": "Junyi Academy Online Learning Activity Dataset",
+    "url": "https://www.kaggle.com/datasets/junyiacademy/learning-activity-public-dataset-by-junyi-academy",
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+  },
+  "num_concepts": 1326,
+  "path_len": 3,
+  "num_candidates": 20,
+  "students": 300,
+  "examples": 3256,
+  "train_students": 7000,
+  "metrics": {
+    "pointer": {
+      "precision": {
+        "mean": 0.7773,
+        "ci_low": 0.7713,
+        "ci_high": 0.7831
+      },
+      "recall": {
+        "mean": 0.7773,
+        "ci_low": 0.7713,
+        "ci_high": 0.7831
+      },
+      "hit_rate": {
+        "mean": 0.9464,
+        "ci_low": 0.9419,
+        "ci_high": 0.9507
+      },
+      "ndcg": {
+        "mean": 0.7862,
+        "ci_low": 0.7803,
+        "ci_high": 0.7921
+      },
+      "mrr": {
+        "mean": 0.8722,
+        "ci_low": 0.8667,
+        "ci_high": 0.8777
+      },
+      "first_step": {
+        "mean": 0.5857,
+        "ci_low": 0.5755,
+        "ci_high": 0.5954
+      }
+    },
+    "random": {
+      "precision": {
+        "mean": 0.1504,
+        "ci_low": 0.1467,
+        "ci_high": 0.154
+      },
+      "recall": {
+        "mean": 0.1504,
+        "ci_low": 0.1467,
+        "ci_high": 0.154
+      },
+      "hit_rate": {
+        "mean": 0.4026,
+        "ci_low": 0.3931,
+        "ci_high": 0.4119
+      },
+      "ndcg": {
+        "mean": 0.1505,
+        "ci_low": 0.1467,
+        "ci_high": 0.1543
+      },
+      "mrr": {
+        "mean": 0.2576,
+        "ci_low": 0.2508,
+        "ci_high": 0.2641
+      },
+      "first_step": {
+        "mean": 0.0766,
+        "ci_low": 0.0715,
+        "ci_high": 0.0818
+      }
+    },
+    "popularity": {
+      "precision": {
+        "mean": 0.3141,
+        "ci_low": 0.308,
+        "ci_high": 0.3202
+      },
+      "recall": {
+        "mean": 0.3141,
+        "ci_low": 0.308,
+        "ci_high": 0.3202
+      },
+      "hit_rate": {
+        "mean": 0.5733,
+        "ci_low": 0.5632,
+        "ci_high": 0.5824
+      },
+      "ndcg": {
+        "mean": 0.3126,
+        "ci_low": 0.3062,
+        "ci_high": 0.3187
+      },
+      "mrr": {
+        "mean": 0.42,
+        "ci_low": 0.4122,
+        "ci_high": 0.428
+      },
+      "first_step": {
+        "mean": 0.1761,
+        "ci_low": 0.1688,
+        "ci_high": 0.184
+      }
+    },
+    "markov": {
+      "precision": {
+        "mean": 0.712,
+        "ci_low": 0.7059,
+        "ci_high": 0.7176
+      },
+      "recall": {
+        "mean": 0.712,
+        "ci_low": 0.7059,
+        "ci_high": 0.7176
+      },
+      "hit_rate": {
+        "mean": 0.9461,
+        "ci_low": 0.9415,
+        "ci_high": 0.9504
+      },
+      "ndcg": {
+        "mean": 0.7432,
+        "ci_low": 0.7372,
+        "ci_high": 0.7488
+      },
+      "mrr": {
+        "mean": 0.8886,
+        "ci_low": 0.8831,
+        "ci_high": 0.8937
+      },
+      "first_step": {
+        "mean": 0.6452,
+        "ci_low": 0.6352,
+        "ci_high": 0.6549
+      }
+    },
+    "gru_next_item": {
+      "precision": {
+        "mean": 0.7595,
+        "ci_low": 0.7539,
+        "ci_high": 0.7651
+      },
+      "recall": {
+        "mean": 0.7595,
+        "ci_low": 0.7539,
+        "ci_high": 0.7651
+      },
+      "hit_rate": {
+        "mean": 0.9498,
+        "ci_low": 0.9456,
+        "ci_high": 0.9541
+      },
+      "ndcg": {
+        "mean": 0.7751,
+        "ci_low": 0.7695,
+        "ci_high": 0.7808
+      },
+      "mrr": {
+        "mean": 0.8808,
+        "ci_low": 0.8752,
+        "ci_high": 0.8862
+      },
+      "first_step": {
+        "mean": 0.5462,
+        "ci_low": 0.5367,
+        "ci_high": 0.5558
+      }
+    }
+  },
+  "dkt_auc": 0.7365650585233944
+}
