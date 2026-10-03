@@ -212,7 +212,7 @@ def cmd_report(args: argparse.Namespace) -> None:
     from pathtrace.report import build_report
 
     result = build_report(args.data, args.runs, args.out, split=args.split, n_boot=args.bootstrap)
-    print((Path(args.out) / "main_table.md").read_text())
+    print((Path(args.out) / "main_table.md").read_text(encoding="utf-8"))
     print(f"strongest baseline: {result['strongest_baseline']}")
 
 

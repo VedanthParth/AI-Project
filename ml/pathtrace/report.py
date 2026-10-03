@@ -207,8 +207,8 @@ def _write_tables(result: dict, out: Path) -> None:
     )
     md = [f"| {' | '.join(header)} |", "| " + " | ".join(["---"] * len(header)) + " |"]
     md += [f"| {' | '.join(r)} |" for r in body]
-    (out / "main_table.md").write_text(caption + "\n\n" + "\n".join(md) + "\n")
-    with open(out / "main_table.csv", "w", newline="") as f:
+    (out / "main_table.md").write_text(caption + "\n\n" + "\n".join(md) + "\n", encoding="utf-8")
+    with open(out / "main_table.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(header)
         writer.writerows(body)
@@ -232,7 +232,7 @@ def _write_tables(result: dict, out: Path) -> None:
         "\\end{tabular}",
         "\\end{table*}",
     ]
-    (out / "main_table.tex").write_text("\n".join(lines) + "\n")
+    (out / "main_table.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- figures

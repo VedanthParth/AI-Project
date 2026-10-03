@@ -176,7 +176,7 @@ def export_bundle(
     }
     save_json(meta, out / "meta.json")
     (out / "README.md").write_text(
-        README.format(data=data.name, runs=runs.name, date=date, students=len(chosen), **DATASET)
+        README.format(data=data.name, runs=runs.name, date=date, students=len(chosen), **DATASET), encoding="utf-8"
     )
     size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     log(f"exported {len(chosen)} students, {meta['examples']} examples to {out} ({size / 1e6:.1f} MB)")

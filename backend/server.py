@@ -42,7 +42,7 @@ def load_env_file(path: Path) -> None:
     """Minimal .env support: KEY=value lines, without overriding the real environment."""
     if not path.exists():
         return
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8-sig").splitlines():  # -sig: Notepad may add a BOM
         key, sep, value = line.strip().partition("=")
         if sep and key and not key.startswith("#"):
             os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))

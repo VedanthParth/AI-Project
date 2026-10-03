@@ -74,7 +74,7 @@ def test_tutor_calls_gemini_with_the_model_facts(client, monkeypatch):
 
 
 def test_serves_the_built_frontend(bundle, tmp_path):
-    (tmp_path / "index.html").write_text("<html>pathtrace</html>")
+    (tmp_path / "index.html").write_text("<html>pathtrace</html>", encoding="utf-8")
     app = TestClient(server.create_app(bundle, frontend_dir=tmp_path))
     assert "pathtrace" in app.get("/").text
     assert app.get("/api/health").status_code == 200
