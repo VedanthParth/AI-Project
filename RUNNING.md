@@ -145,6 +145,10 @@ dataset and lists every command. Training on a CPU is slow (about 3 minutes per 
 9. The main results table.
 10. `fig_methods.png`, `fig_training.png` and `fig_rl.png`.
 
+The same table and figures for the 10,000-student subsample (one seed, trained on a CPU) are
+already in [`ml/results/junyi-10k`](ml/results/junyi-10k), so the presentation has real
+results even before the Colab run finishes.
+
 **Terminal** (section 3 above):
 
 11. The `train` output, showing epochs and the val/test tables.

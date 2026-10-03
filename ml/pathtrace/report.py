@@ -298,8 +298,9 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
             if name in baselines:
                 value = baselines[name]["val"]["metrics"]["ndcg"]["mean"]
                 right.axhline(value, color=MUTED, linewidth=1, linestyle="--")
-                right.annotate(LABELS[name], (1, value), xycoords=("axes fraction", "data"), xytext=(-4, 3),
-                               textcoords="offset points", ha="right", fontsize=8, color=INK_2)
+                # labelled at the left, where the training curve is still far below the line
+                right.annotate(LABELS[name], (0, value), xycoords=("axes fraction", "data"), xytext=(4, 3),
+                               textcoords="offset points", ha="left", fontsize=8, color=INK_2)
         right.set(title="Validation NDCG@3", xlabel="Epoch")
         for ax in (left, right):
             _style(ax, integer_x=True)
