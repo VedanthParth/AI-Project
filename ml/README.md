@@ -12,7 +12,7 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 55 tests, about 45 s
+.venv/bin/python -m pytest          # 68 tests, about 30 s
 ```
 
 Training on the full dataset needs a GPU. On a 4-core CPU the pointer network takes about
@@ -77,7 +77,15 @@ python -m pathtrace gain --data data/processed/junyi --dkt runs/junyi/dkt/dkt.pt
 
 # 7. Re-evaluate a checkpoint
 python -m pathtrace evaluate --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt --split test
+
+# 8. Bundle a checkpoint, its simulators and 300 test students for the app (needs bkt/, prereq/, dkt/)
+python -m pathtrace export --data data/processed/junyi --runs runs/junyi --checkpoint pointer-seed0 \
+    --content data/raw/junyi/Info_Content.csv --out ../backend/bundle
 ```
+
+The committed `backend/bundle` was exported from the 10,000-student subsample
+(`prepare --max-students 10000`) with the tie-aware checkpoint `pointer-ties-seed0`. Re-export
+from the full-data runs once the Colab grid has finished.
 
 `python -m pathtrace <command> --help` lists every option with its default. When running
 several jobs on one CPU, give each `--threads 1` (before the command name): oversubscribed

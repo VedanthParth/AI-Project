@@ -59,6 +59,17 @@ class PopularityBaseline(Baseline):
         return proc.popularity[proc.examples[split].candidates]
 
 
+def transition_counts(proc: Processed) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Counts of concept a's first attempt being followed by concept b's, over training students."""
+    size = proc.inter.num_concepts + 1
+    pairs = [np.zeros(0, dtype=np.int64)]
+    for s in proc.splits["train"]:
+        distinct, _ = first_attempts(proc.inter.sequence(s)[0])
+        pairs.append(distinct[:-1].astype(np.int64) * size + distinct[1:])
+    keys, counts = np.unique(np.concatenate(pairs), return_counts=True)
+    return keys // size, keys % size, counts
+
+
 class MarkovBaseline(Baseline):
     name = "markov"
 
@@ -67,14 +78,16 @@ class MarkovBaseline(Baseline):
         self.decay = decay
 
     def fit(self, proc: Processed) -> None:
-        size = proc.inter.num_concepts + 1
-        counts = np.zeros((size, size))
-        for s in proc.splits["train"]:
-            distinct, _ = first_attempts(proc.inter.sequence(s)[0])
-            np.add.at(counts, (distinct[:-1], distinct[1:]), 1.0)
-        self.transition = counts / (counts.sum(axis=1, keepdims=True) + 1.0)
+        self.set_counts(*transition_counts(proc), proc.popularity)
+
+    def set_counts(self, src: np.ndarray, dst: np.ndarray, counts: np.ndarray, popularity: np.ndarray) -> None:
+        """Build the model from sparse first-attempt transition counts (as saved in the app bundle)."""
+        size = len(popularity)
+        dense = np.zeros((size, size))
+        dense[src, dst] = counts
+        self.transition = dense / (dense.sum(axis=1, keepdims=True) + 1.0)
         # Tiny popularity term so that unseen transitions still get an order.
-        self.backoff = 1e-6 * proc.popularity / max(proc.popularity.max(), 1.0)
+        self.backoff = 1e-6 * popularity / max(popularity.max(), 1.0)
 
     def score(self, proc: Processed, split: str) -> np.ndarray:
         ex = proc.examples[split]

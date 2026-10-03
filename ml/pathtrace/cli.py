@@ -11,6 +11,7 @@
     finetune   corrected REINFORCE fine-tuning against the BKT reward
     grid       the full experiment grid for one dataset (resumable)
     report     paper tables and figures from a dataset's runs
+    export     bundle a trained model, simulators and sample students for the app
     evaluate   re-evaluate a saved checkpoint on one split
 """
 
@@ -215,6 +216,22 @@ def cmd_report(args: argparse.Namespace) -> None:
     print(f"strongest baseline: {result['strongest_baseline']}")
 
 
+def cmd_export(args: argparse.Namespace) -> None:
+    from pathtrace.export import export_bundle
+
+    export_bundle(
+        args.data,
+        args.runs,
+        args.out,
+        checkpoint=args.checkpoint,
+        names_csv=args.names,
+        content_csv=args.content,
+        split=args.split,
+        max_students=args.max_students,
+        seed=args.seed,
+    )
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
     from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
@@ -342,6 +359,19 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--split", choices=("val", "test"), default="test")
     p.add_argument("--bootstrap", type=int, default=1000)
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("export", help="bundle a trained model, its simulators and sample students for the app")
+    p.add_argument("--data", type=Path, required=True, help="processed data directory")
+    p.add_argument("--runs", type=Path, required=True, help="runs directory with bkt/, prereq/, dkt/ and the checkpoint")
+    p.add_argument("--out", type=Path, required=True, help="bundle directory (replaced if it exists)")
+    p.add_argument("--checkpoint", default="pointer-seed0", help="run directory under --runs holding model.pt")
+    p.add_argument("--names", type=Path, default=Path(__file__).resolve().parents[1] / "resources" / "junyi_concepts_en.csv",
+                   help="CSV with ucid, name_en and level columns")
+    p.add_argument("--content", type=Path, default=None, help="Junyi Info_Content.csv, for learning stage and difficulty")
+    p.add_argument("--split", choices=("val", "test"), default="test")
+    p.add_argument("--max-students", type=int, default=300)
+    p.add_argument("--seed", type=int, default=0)
+    p.set_defaults(func=cmd_export)
 
     p = sub.add_parser("evaluate", help="evaluate a saved checkpoint")
     p.add_argument("--data", type=Path, required=True)
