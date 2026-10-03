@@ -60,8 +60,8 @@ Then open **http://localhost:8000**. Stop the server with Ctrl+C. Next time, onl
   [Google AI Studio](https://aistudio.google.com/apikey), copy `backend/.env.example` to
   `backend/.env` and set `GEMINI_API_KEY`, or paste the key under "Gemini API key" in the app.
 - **Links to a specific moment.** The address bar keeps the student and moment, so a view can
-  be reopened later. With the committed bundle, a good one for the prerequisite map is
-  http://localhost:8000/?student=112&moment=1200.
+  be reopened later. With the committed bundle, a good one for the demo is
+  http://localhost:8000/?student=259&moment=2774.
 
 ## 2. Run the full experiments on Colab
 
@@ -136,7 +136,7 @@ dataset and lists every command. Training on a CPU is slow (about 3 minutes per 
 4. **Compare with the baselines** table.
 5. **Simulate following each path** chart, with the mouse over a point to show the tooltip.
 6. **Prerequisite map**, both *Around the path* and *All linked candidates*
-   (`?student=112&moment=1200` with the committed bundle).
+   (`?student=259&moment=2774` with the committed bundle).
 7. **Ask the tutor** after clicking *Why this path?*.
 8. **About this model** table at the bottom.
 
