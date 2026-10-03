@@ -8,7 +8,7 @@ Reads what ``grid`` writes under ``runs_dir`` and produces, in ``out_dir``:
   the strongest baseline with a paired bootstrap 95% CI and p-value;
 - ``results.json``: everything in the table, unrounded;
 - ``fig_training.png``, ``fig_rl.png``, ``fig_methods.png`` when the inputs
-  exist and matplotlib is installed.
+  exist.
 
 Every number comes from saved predictions, re-scored here, so the table can
 always be regenerated from the run folders.
@@ -280,7 +280,7 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except ImportError:
-        log("matplotlib not installed; skipping figures (pip install 'pathtrace[report]')")
+        log("matplotlib not installed; skipping figures (pip install matplotlib)")
         return
     plt.rcParams.update({"font.size": 10, "figure.dpi": 150, "savefig.bbox": "tight", "savefig.facecolor": "white"})
 
