@@ -78,7 +78,9 @@ def save_checkpoint(path: Path, model: PathRecommender, model_cfg: ModelConfig, 
 
 def load_checkpoint(path: str | Path, device: torch.device) -> tuple[PathRecommender, dict]:
     ckpt = torch.load(path, map_location=device, weights_only=False)
-    model = PathRecommender(ckpt["num_concepts"], dataclass_from_dict(ModelConfig, ckpt["model_config"]))
+    # Checkpoints saved before first_step_ties existed were trained with the plain step-1 loss.
+    saved = {"first_step_ties": False, **ckpt["model_config"]}
+    model = PathRecommender(ckpt["num_concepts"], dataclass_from_dict(ModelConfig, saved))
     model.load_state_dict(ckpt["model_state"])
     return model.to(device).eval(), ckpt
 

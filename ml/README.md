@@ -91,7 +91,7 @@ PyTorch threads made two jobs on 4 cores run about 30x slower.
 | Without the KT head | `train --kt-weight 0` |
 | Without the candidate Transformer | `train --attn-layers 0` |
 | Weight the first decoding step more | `train --first-step-weight 3` |
-| Any target tied for the first window counts at step 1 | `train --first-step-ties true` |
+| Plain step-1 loss (only the lowest-id tied target counts) | `train --first-step-ties false` |
 | Another seed | `train --seed 1` |
 | RL without the supervised anchor | `finetune --sup-weight 0` |
 | RL with the moving-average baseline | `finetune --baseline ema` |
@@ -138,6 +138,13 @@ The Paper lane should update these sections to match the code:
 - **Section 5.1, optimisation.** Batch size 64, weight decay 1e-5, dropout 0.1, and
   early stopping on validation NDCG@3 (patience 5, at most 50 epochs). Histories are
   truncated to their last 100 attempts.
+- **Section 5.1, step-1 loss.** In about 40% of examples several targets share the first
+  15-minute window, so which of them is "first" is arbitrary. The step-1 term is
+  -log of the total probability of those tied targets, matching the `first_step` metric;
+  later steps use plain cross-entropy. On the 10,000-student subsample (test split, seed 0)
+  this raised first-step accuracy from 0.545 to 0.586 for -0.005 NDCG@3; giving step 1
+  three times the weight did not help. Markov still picks the first concept best (0.645):
+  report this as a limitation.
 - **Section 6.4, metrics.** Adds `first_step` (is the first recommended concept the
   one the student attempted next?), the only order-sensitive metric. Precision@3
   equals Recall@3 by construction, so report one of them.

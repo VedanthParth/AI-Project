@@ -39,6 +39,7 @@ def test_teacher_forcing_scores_targets(model_and_batch):
         model.encode_student(batch), model.encode_candidates(batch.candidates), 3, "teacher", batch.target_slots
     )
     assert torch.equal(out.actions, batch.target_slots)
+    model.cfg = ModelConfig(dropout=0.0, first_step_ties=False)
     expected = F.cross_entropy(out.logits.reshape(-1, out.logits.size(-1)), batch.target_slots.reshape(-1))
     assert model.path_loss(batch, 3).item() == pytest.approx(expected.item(), rel=1e-5)
 
@@ -54,7 +55,7 @@ def _step_nll(model, batch):
 def test_first_step_weight_reweights_step_one(model_and_batch):
     model, batch = model_and_batch
     model.eval()
-    model.cfg = ModelConfig(dropout=0.0, first_step_weight=3.0)
+    model.cfg = ModelConfig(dropout=0.0, first_step_weight=3.0, first_step_ties=False)
     logits, nll = _step_nll(model, batch)
     expected = ((3.0 * nll[:, 0] + nll[:, 1] + nll[:, 2]) / 5.0).mean()
     assert model.step_loss(logits, batch).item() == pytest.approx(expected.item(), rel=1e-5)
@@ -65,6 +66,7 @@ def test_tie_aware_first_step_accepts_any_tied_target(model_and_batch):
     model.eval()
     logits, nll = _step_nll(model, batch)
     batch.first_group = torch.ones_like(batch.first_group)
+    model.cfg = ModelConfig(dropout=0.0, first_step_ties=False)
     exact = model.step_loss(logits, batch).item()
     model.cfg = ModelConfig(dropout=0.0, first_step_ties=True)
     assert model.step_loss(logits, batch).item() == pytest.approx(exact, rel=1e-6)  # no ties, same loss
