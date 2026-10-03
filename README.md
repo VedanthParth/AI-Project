@@ -11,9 +11,12 @@ DKT student simulator.
 | [`backend/`](backend/server.py) | FastAPI service that serves the trained model on held-out students |
 | [`frontend/`](frontend/) | React app: recommended path, attention, baselines, simulation, prerequisite map and tutor |
 
+**[RUNNING.md](RUNNING.md)** has step-by-step instructions for everything: the app on Windows,
+macOS or Linux, the Colab experiments, and the ML code in a terminal.
+
 ## Run the demo app
 
-Needs Python 3.10+ and Node 20+. From the repository root:
+Needs Python 3.10+ and Node 20.19+. From the repository root:
 
 ```bash
 python3 -m venv .venv
