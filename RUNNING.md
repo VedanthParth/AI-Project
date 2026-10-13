@@ -119,7 +119,7 @@ python -m pathtrace train --data demo/processed --out demo/runs/pointer-seed0 --
 `train` prints the loss and validation NDCG@3 every epoch, then val and test tables. Delete the
 `demo/` folder afterwards.
 
-Tests and lint, with the virtual environment active: `python -m pytest` in `ml/` (68 tests, about
+Tests and lint, with the virtual environment active: `python -m pytest` in `ml/` (64 tests, about
 30 s), `python -m pytest backend/tests` from the repository root (6 tests), and `ruff check ml backend`.
 
 To run on the real data instead, follow [`ml/README.md`](ml/README.md): it downloads the
@@ -147,7 +147,10 @@ dataset and lists every command. Training on a CPU is slow (about 3 minutes per 
 
 The same table and figures for the 10,000-student subsample (one seed, trained on a CPU) are
 already in [`ml/results/junyi-10k`](ml/results/junyi-10k), so the presentation has real
-results even before the Colab run finishes.
+results even before the Colab run finishes. They predate two report fixes: the BKT oracle's
+DKT gain there was measured on the top-gain paths rather than the reward oracle's, and the
+validation curve in `fig_training.png` is plain cross-entropy rather than the training loss.
+The Colab run's `report` output has both fixed.
 
 **Terminal** (section 3 above):
 

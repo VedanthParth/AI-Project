@@ -13,7 +13,7 @@ From the repository root, in the virtual environment [RUNNING.md](../RUNNING.md)
 ```bash
 pip install -e 'ml[dev]'
 cd ml
-python -m pytest                    # 68 tests, about 30 s
+python -m pytest                    # 64 tests, about 30 s
 ruff check . && ruff format --check .
 ```
 
@@ -32,13 +32,15 @@ is a public download (1.6 GB zip, no Kaggle account needed):
 mkdir -p data/raw/junyi && cd data/raw/junyi
 curl -L -o junyi.zip https://www.kaggle.com/api/v1/datasets/download/junyiacademy/learning-activity-public-dataset-by-junyi-academy
 unzip junyi.zip && rm junyi.zip    # Log_Problem.csv (3.0 GB), Info_Content.csv, Info_UserData.csv
+cd ../../..
 ```
 
 `ml/data/` and `ml/runs/` are git-ignored, so raw data and run outputs never get committed.
 
-## The whole grid in two commands
+## The whole grid in three commands
 
 ```bash
+python -m pathtrace prepare --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi
 python -m pathtrace grid --data data/processed/junyi --runs runs/junyi --content data/raw/junyi/Info_Content.csv
 python -m pathtrace report --data data/processed/junyi --runs runs/junyi --out results/junyi
 ```
@@ -89,7 +91,8 @@ The committed `backend/bundle` was exported from the 10,000-student subsample
 (`prepare --max-students 10000`) with the tie-aware checkpoint `pointer-ties-seed0`. Re-export
 from the full-data runs once the Colab grid has finished.
 
-`python -m pathtrace <command> --help` lists every option with its default. When running
+`python -m pathtrace <command> --help` lists every option; the data, model, training and RL settings
+show their defaults, and the other defaults are in `pathtrace/cli.py`. When running
 several jobs on one CPU, give each `--threads 1` (before the command name): oversubscribed
 PyTorch threads made two jobs on 4 cores run about 30x slower.
 
