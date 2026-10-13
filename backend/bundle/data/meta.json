@@ -1,0 +1,29 @@
+{
+  "data_config": {
+    "student_col": "uuid",
+    "concept_col": "ucid",
+    "correct_col": "is_correct",
+    "time_col": "timestamp_TW",
+    "session_col": "exercise_problem_repeat_session",
+    "problem_col": "problem_number",
+    "max_students": 10000,
+    "path_len": 3,
+    "num_candidates": 20,
+    "min_history": 3,
+    "windows": "all",
+    "max_windows_per_student": 20,
+    "negatives": "uniform",
+    "exclude_seen": true,
+    "split": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "seed": 42
+  },
+  "stats": {
+    "students": 300,
+    "interactions": 110140,
+    "examples": 3256
+  }
+}

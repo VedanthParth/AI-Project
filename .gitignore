@@ -1,18 +1,28 @@
-# Dependencies
+# Dependencies and virtual environments
 node_modules/
-**/node_modules/
+.venv/
 
-# Environment variables & secrets
+# Secrets
 .env
-backend/.env
-frontend/.env
-**/.env
+.env.local
+.env.*.local
 
 # Build outputs
 dist/
-build/
 .vite/
 
-# System files
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+*.egg-info/
+ml/data/
+ml/runs/
+
+# Editors and OS
+.vscode/
+.idea/
 .DS_Store
 *.log
