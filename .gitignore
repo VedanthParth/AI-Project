@@ -16,6 +16,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+.coverage
 *.egg-info/
 ml/data/
 ml/runs/
