@@ -50,9 +50,9 @@ export default function StudentHeader({ summary, detail, exampleId, onSelectExam
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Moments">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Moments">
           {examples.map((e, i) => (
-            <button key={e.id} type="button" role="tab" aria-selected={e.id === exampleId}
+            <button key={e.id} type="button" aria-current={e.id === exampleId}
               className="btn num" onClick={() => onSelectExample(e.id)}
               style={e.id === exampleId ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' } : undefined}
               title={`After ${e.cut} attempts, ${e.date}`}>

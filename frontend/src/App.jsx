@@ -30,6 +30,7 @@ export default function App() {
   const [errors, setErrors] = useState({});
   const initial = useRef(readUrl());
   const current = useRef(null);
+  const studentRequest = useRef(null);
 
   const selectExample = useCallback((id, sid) => {
     current.current = id;
@@ -50,15 +51,18 @@ export default function App() {
   }, []);
 
   const selectStudent = useCallback((sid) => {
+    const request = {};
+    studentRequest.current = request;
     setStudentId(sid);
     setDetail(null);
     api.student(sid).then((d) => {
+      if (studentRequest.current !== request) return;
       setDetail(d);
       const wanted = d.examples.find((e) => e.id === initial.current.example);
       initial.current.example = null;
       const chosen = wanted ?? d.examples[Math.floor(d.examples.length / 2)];
       if (chosen) selectExample(chosen.id, sid);
-    }).catch((err) => setErrors({ load: err.message }));
+    }).catch((err) => studentRequest.current === request && setErrors({ load: err.message }));
   }, [selectExample]);
 
   useEffect(() => {

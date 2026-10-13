@@ -105,7 +105,6 @@ body {
   color: var(--ink);
   border-radius: 8px;
   padding: 6px 12px;
-  font: inherit;
   cursor: pointer;
 }
 
@@ -131,7 +130,6 @@ body {
   color: var(--ink);
   border-radius: 8px;
   padding: 6px 10px;
-  font: inherit;
   box-sizing: border-box;
 }
 
@@ -151,7 +149,6 @@ body {
   background: transparent;
   color: inherit;
   padding: 8px 10px;
-  font: inherit;
   cursor: pointer;
 }
 

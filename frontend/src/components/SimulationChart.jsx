@@ -69,7 +69,7 @@ export default function SimulationChart({ example, simulation, error }) {
             <g key={t}>
               <line x1={M.left} x2={W - M.right} y1={y(t)} y2={y(t)} stroke="var(--grid)" strokeWidth="1" />
               <text x={M.left - 6} y={y(t)} textAnchor="end" dominantBaseline="middle" fontSize="11" fill="var(--muted)">
-                {pct(t)}
+                {pct(t, 1)}
               </text>
             </g>
           ))}
@@ -99,7 +99,7 @@ export default function SimulationChart({ example, simulation, error }) {
           )}
         </svg>
         {hover !== null && (
-          <div className="tooltip" style={{ left: `${(x(hover) / W) * 100}%`, top: 0, transform: `translateX(${hover > n / 2 ? '-105%' : '5%'})` }}>
+          <div className="tooltip" style={{ left: `${(x(hover) / W) * 100}%`, top: 0, transform: `translateX(${hover > (n - 1) / 2 ? '-105%' : '5%'})` }}>
             <div className="font-medium mb-1">{hover === 0 ? 'Before practice' : `Attempt ${hover} (concept ${Math.ceil(hover / per)})`}</div>
             {[...series].sort((a, b) => b.curve[hover] - a.curve[hover]).map((s) => (
               <div key={s.name} className="flex items-center justify-between gap-4">

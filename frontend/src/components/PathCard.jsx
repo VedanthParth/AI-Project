@@ -14,7 +14,7 @@ function Outcome({ cand, firstGroup }) {
   }
   const first = cand.target_rank <= firstGroup;
   const text = first
-    ? `The student started this next${firstGroup > 1 ? `, in the same session as ${firstGroup - 1} other new concept${firstGroup > 2 ? 's' : ''}` : ''}`
+    ? `The student started this next${firstGroup > 1 ? `, in the same 15-minute window as ${firstGroup - 1} other new concept${firstGroup > 2 ? 's' : ''}` : ''}`
     : `The student started this ${ORDINAL[cand.target_rank - 1]} of their next 3 new concepts`;
   return (
     <div className="flex items-center gap-1.5 text-xs">

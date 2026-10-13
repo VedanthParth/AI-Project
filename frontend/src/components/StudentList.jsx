@@ -49,16 +49,17 @@ export default function StudentList({ students, selected, onSelect }) {
       </div>
       <div ref={listRef} className="overflow-y-auto -mx-2 px-2 max-h-72 lg:max-h-none" role="list">
         {shown.map((s) => (
-          <button key={s.id} type="button" role="listitem" className="list-item" aria-current={s.id === selected}
-            onClick={() => onSelect(s.id)}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{s.label}</span>
-              <span className="muted num text-xs">{s.examples} moments</span>
-            </div>
-            <div className="muted text-xs num">
-              {s.attempts.toLocaleString()} attempts · {s.concepts} concepts · {pct(s.accuracy)} correct
-            </div>
-          </button>
+          <div key={s.id} role="listitem">
+            <button type="button" className="list-item" aria-current={s.id === selected} onClick={() => onSelect(s.id)}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">{s.label}</span>
+                <span className="muted num text-xs">{s.examples} moments</span>
+              </div>
+              <div className="muted text-xs num">
+                {s.attempts.toLocaleString()} attempts · {s.concepts} concepts · {pct(s.accuracy)} correct
+              </div>
+            </button>
+          </div>
         ))}
         {!shown.length && <p className="muted text-sm px-2">No students match.</p>}
       </div>

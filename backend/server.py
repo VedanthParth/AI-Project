@@ -116,7 +116,8 @@ def tutor_prompt(demo: Demo, example: int, req: TutorRequest) -> str:
 def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path | None = DEFAULT_FRONTEND) -> FastAPI:
     demo = Demo(bundle_dir)
     app = FastAPI(title="PathTrace demo API")
-    example = lru_cache(maxsize=512)(demo.example)
+    # Cached on the instance so the tutor templates and prompt reuse it too.
+    demo.example = lru_cache(maxsize=512)(demo.example)
     students = demo.students()
 
     def guard(fn, *args):
@@ -139,11 +140,11 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
 
     @app.get("/api/examples/{example_id}")
     def get_example(example_id: int) -> dict:
-        return guard(example, example_id)
+        return guard(demo.example, example_id)
 
     @app.get("/api/examples/{example_id}/simulate")
     def simulate(example_id: int) -> dict:
-        ex = guard(example, example_id)
+        ex = guard(demo.example, example_id)
         return demo.simulate(example_id, {name: ex["paths"][name]["slots"] for name in (*METHODS, "actual")})
 
     @app.get("/api/examples/{example_id}/graph")
@@ -152,7 +153,7 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
 
     @app.post("/api/examples/{example_id}/tutor")
     def tutor(example_id: int, req: TutorRequest) -> dict:
-        guard(example, example_id)
+        guard(demo.example, example_id)
         if req.kind == "concept" and req.concept_id not in demo.concepts:
             raise HTTPException(status_code=422, detail="concept_id must be a known concept for kind 'concept'")
         key = req.api_key or os.environ.get("GEMINI_API_KEY")
@@ -170,9 +171,11 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
 
 
 def main() -> None:
+    global GEMINI_MODEL
     import uvicorn
 
     load_env_file(ROOT / ".env")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", GEMINI_MODEL)
     bundle = os.environ.get("PATHTRACE_BUNDLE", str(DEFAULT_BUNDLE))
     port = int(os.environ.get("PORT", "8000"))
     print(f"PathTrace demo: bundle {bundle}, http://localhost:{port}")
