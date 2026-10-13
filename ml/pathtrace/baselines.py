@@ -93,7 +93,7 @@ class MarkovBaseline(Baseline):
             recent = distinct[max(0, seen - self.order) : seen][::-1]
             weights = self.decay ** np.arange(len(recent))
             cands = ex.candidates[i]
-            out[i] = weights @ self.transition[np.ix_(recent, cands)] + self.backoff[cands]
+            out[i] = weights @ self.transition[recent[:, None], cands] + self.backoff[cands]
         return out
 
 

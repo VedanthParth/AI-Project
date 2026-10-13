@@ -42,9 +42,9 @@ DATASET = {
 README = """# PathTrace app bundle
 
 Exported by `pathtrace export` from {source} on {date}. See `meta.json` for
-the exact runs and their test metrics.
+the exact runs and their {split} metrics.
 
-The student histories in `data/` are {students} test-split students from the
+The student histories in `data/` are {students} {split}-split students from the
 [{name}]({url}), which is licensed [{license}]({license_url}). This bundle is derived
 from it and shared under the same license. Concept names are machine-translated
 (see `ml/resources/README.md`).
@@ -164,7 +164,7 @@ def export_bundle(
     save_json(meta, out / "meta.json")
     source = f"`{data.name}`" if data.name == runs.name else f"`{data.name}` and `{runs.name}`"
     (out / "README.md").write_text(
-        README.format(source=source, date=date, students=len(chosen), **DATASET), encoding="utf-8"
+        README.format(source=source, date=date, students=len(chosen), split=split, **DATASET), encoding="utf-8"
     )
     size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     log(f"exported {len(chosen)} students, {meta['examples']} examples to {out} ({size / 1e6:.1f} MB)")

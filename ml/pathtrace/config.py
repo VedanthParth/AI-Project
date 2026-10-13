@@ -31,7 +31,7 @@ class DataConfig:
         "exercise_problem_repeat_session", "orders a concept's attempts within a time window ('' = none)"
     )
     problem_col: str = _opt("problem_number", "orders attempts within an exercise session ('' = none)")
-    max_students: int | None = _opt(None, "subsample this many students (default: all)", int)
+    max_students: int | None = _opt(None, "subsample this many students (None = all)", int)
     path_len: int = _opt(3, "K, the number of concepts in a recommended path")
     num_candidates: int = _opt(20, "N, the size of each candidate set")
     min_history: int = _opt(3, "minimum interactions before the first target concept")

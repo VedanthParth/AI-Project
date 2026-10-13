@@ -252,7 +252,10 @@ def fit_bkt(
         "concepts_fallback": int(size - 1 - fitted.sum()),
         "global_params": {k: float(v[0]) for k, v in global_p.items()},
         "em_iterations": {"global": len(global_ll), "per_concept": len(per_ll)},
-        "train_loglik_per_attempt": {"global": global_ll[-1] / len(ch.y), "per_concept": per_ll[-1] / len(ch.y)},
+        "train_loglik_per_attempt": {
+            "global": global_ll[-1] / len(ch.y),
+            "per_concept": float(np.log(_forward(ch, ch.chain_concept, params.as_dict())[2]).mean()),
+        },
     }
     if log:
         log(

@@ -256,6 +256,8 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
     cfg = dataclass_from_dict(TrainConfig, {**ckpt["train_config"], "bootstrap": args.bootstrap})
     proc = load_processed(args.data)
     result, _ = evaluate_model(model, proc, args.split, cfg, device, n_boot=args.bootstrap)
+    if result["n"] == 0:
+        raise SystemExit(f"no {args.split} examples in {args.data}")
     _print_table(f"{args.split} ({result['n']:,} examples, KT AUC {result['kt_auc']:.4f})", {"pointer": _means(result)})
     if args.out:
         save_json(result, args.out)

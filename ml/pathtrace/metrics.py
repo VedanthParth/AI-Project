@@ -43,12 +43,17 @@ def summarize(values: dict[str, np.ndarray], n_boot: int = 0, seed: int = 0) -> 
     out: dict[str, dict[str, float]] = {}
     rng = np.random.default_rng(seed)
     size = len(next(iter(values.values()))) if values else 0
-    resamples = rng.integers(0, size, size=(n_boot, size)) if n_boot and size else None
+    # Resamples are drawn 64 at a time: the same random stream as one (n_boot, size) draw, without holding it.
+    means = {name: np.empty(n_boot) for name in values} if n_boot and size else None
+    if means is not None:
+        for start in range(0, n_boot, 64):
+            resamples = rng.integers(0, size, size=(min(64, n_boot - start), size))
+            for name, v in values.items():
+                means[name][start : start + len(resamples)] = v[resamples].mean(axis=1)
     for name, v in values.items():
         entry = {"mean": float(np.mean(v)) if size else float("nan")}
-        if resamples is not None:
-            means = v[resamples].mean(axis=1)
-            entry["ci_low"], entry["ci_high"] = (float(x) for x in np.percentile(means, [2.5, 97.5]))
+        if means is not None:
+            entry["ci_low"], entry["ci_high"] = (float(x) for x in np.percentile(means[name], [2.5, 97.5]))
         out[name] = entry
     return out
 

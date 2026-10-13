@@ -89,7 +89,10 @@ def _mean_std(values: list[float]) -> tuple[float, float | None]:
 
 def _paired_bootstrap(diff: np.ndarray, n_boot: int, seed: int = 0) -> dict[str, float]:
     rng = np.random.default_rng(seed)
-    means = diff[rng.integers(0, len(diff), size=(n_boot, len(diff)))].mean(axis=1)
+    means = np.empty(n_boot)
+    for start in range(0, n_boot, 64):  # same stream as one (n_boot, len(diff)) draw, see metrics.summarize
+        rows = min(64, n_boot - start)
+        means[start : start + rows] = diff[rng.integers(0, len(diff), size=(rows, len(diff)))].mean(axis=1)
     low, high = np.percentile(means, [2.5, 97.5])
     p = 2 * min((means <= 0).mean(), (means >= 0).mean())
     return {"mean": float(diff.mean()), "ci_low": float(low), "ci_high": float(high), "p_value": float(min(1.0, p))}
@@ -147,7 +150,7 @@ def build_report(
     strongest = max(present_baselines, key=lambda b: per_example_ndcg[b].mean()) if present_baselines else None
     for name, ndcg in per_example_ndcg.items():
         rows[name]["ndcg_ci"] = metrics.summarize({"ndcg": ndcg}, n_boot)["ndcg"]
-        if strongest is not None and name != strongest and name not in BASELINES:
+        if n_boot and strongest is not None and name != strongest and name not in BASELINES:
             rows[name]["vs_strongest"] = _paired_bootstrap(ndcg - per_example_ndcg[strongest], n_boot)
 
     ordered = sorted(rows, key=lambda n: ORDER.index(n) if n in ORDER else len(ORDER))
@@ -227,6 +230,7 @@ def _write_tables(result: dict, out: Path) -> None:
             .replace("_", "\\_")
             .replace("±", "$\\pm$")
             .replace("Δ", "$\\Delta$")
+            .replace("<", "$<$")
             .replace("–", "--")
             .replace("—", "--")
         )
@@ -366,7 +370,7 @@ def _figures(runs: Path, result: dict, ndcg: dict[str, np.ndarray], out: Path, l
                 axes[0].errorbar(
                     ci["mean"],
                     y,
-                    xerr=[[ci["mean"] - ci["ci_low"]], [ci["ci_high"] - ci["mean"]]],
+                    xerr=[[ci["mean"] - ci["ci_low"]], [ci["ci_high"] - ci["mean"]]] if "ci_low" in ci else None,
                     fmt="o",
                     color=color,
                     markersize=6,

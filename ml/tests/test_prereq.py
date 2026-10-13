@@ -40,7 +40,9 @@ def test_same_window_starts_are_not_evidence_of_order(tmp_path):
 
 
 def test_inferred_graph_is_acyclic(tiny_processed):
-    graph, _ = infer_graph(tiny_processed.inter, tiny_processed.splits["train"], min_support=5, min_proximity=0.0)
+    graph, _ = infer_graph(
+        tiny_processed.inter, tiny_processed.splits["train"], min_support=5, min_precedence=0.0, min_proximity=0.0
+    )
     assert len(graph.src) > 0
     indegree = np.bincount(graph.dst, minlength=graph.num_concepts + 1)
     children = {}

@@ -49,12 +49,13 @@ def setup(tiny_processed, tmp_path_factory):
 
 
 @pytest.mark.parametrize("baseline", ["greedy", "ema"])
-def test_finetune_runs_and_never_returns_a_worse_policy(tiny_processed, setup, baseline):
+def test_finetune_improves_the_validation_reward(tiny_processed, setup, baseline):
     out, params, graph = setup
     cfg = RLConfig(max_epochs=3, patience=3, lr=2e-3, bootstrap=0, max_history=30, baseline=baseline)
     results = finetune(tiny_processed, out / "sup" / "model.pt", params, graph, cfg, out / baseline, log=lambda _: None)
     start = results["start"]["reward"]["mean"]
-    assert results["splits"]["val"]["reward"]["mean"] >= start - 1e-9
+    assert results["best_epoch"] > 0
+    assert results["splits"]["val"]["reward"]["mean"] > start
     assert 0 < results["splits"]["test"]["share_of_oracle"] <= 1.0 + 1e-9
     assert (out / baseline / "preds_test.npy").exists()
 

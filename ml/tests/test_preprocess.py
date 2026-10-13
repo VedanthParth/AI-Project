@@ -142,5 +142,5 @@ def test_processed_round_trip(tiny_log, tmp_path):
     assert loaded.stats == saved.stats
     assert loaded.stats["students"] == 120
     for name in SPLITS:
-        for field in ("student", "cut", "targets", "candidates", "target_slots"):
+        for field in ("student", "cut", "targets", "candidates", "target_slots", "first_group"):
             assert np.array_equal(getattr(loaded.examples[name], field), getattr(saved.examples[name], field))

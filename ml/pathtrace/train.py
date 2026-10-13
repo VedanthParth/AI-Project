@@ -42,9 +42,7 @@ def evaluate_model(
         cand = model.encode_candidates(b.candidates)
         preds.append(model.decode(state, cand, k, "greedy").actions.cpu().numpy())
         teacher = model.decode(state, cand, k, "teacher", target_slots=b.target_slots)
-        path_loss_sum += F.cross_entropy(
-            teacher.logits.reshape(-1, teacher.logits.size(-1)), b.target_slots.reshape(-1), reduction="sum"
-        ).item()
+        path_loss_sum += model.step_loss(teacher.logits, b).item() * len(b.index)
         logits = model.kt_logits(b)
         mask = model.kt_mask(b, logits.device)
         kt_scores.append(logits[mask].cpu().numpy())
@@ -56,7 +54,7 @@ def evaluate_model(
     result = {
         "n": len(ex),
         "metrics": metrics.summarize(metrics.per_example(pred, ex.target_slots, ex.first_group), n_boot, cfg.seed),
-        "path_loss": path_loss_sum / (len(ex) * k),
+        "path_loss": path_loss_sum / len(ex),
         "kt_loss": kt_loss,
         "kt_auc": metrics.auc(labels, scores),
     }
@@ -98,8 +96,8 @@ def train_model(
     out.mkdir(parents=True, exist_ok=True)
     k = proc.data_cfg.path_len
     train = proc.examples["train"]
-    if len(train) == 0:
-        raise ValueError("no training examples; check the data and DataConfig")
+    if len(train) == 0 or len(proc.examples["val"]) == 0:
+        raise ValueError("no training or validation examples; check the data and DataConfig")
 
     model = PathRecommender(proc.inter.num_concepts, model_cfg).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)

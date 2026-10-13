@@ -12,6 +12,7 @@ from pathtrace.export import export_bundle
 from pathtrace.grid import run_grid
 from pathtrace.preprocess import load_processed, prepare
 from pathtrace.train import load_checkpoint
+from pathtrace.utils import load_json
 
 
 @pytest.fixture(scope="module")
@@ -59,7 +60,8 @@ def test_export_keeps_only_sampled_test_students(bundle):
         ours = sub.examples["test"].cut[sub.examples["test"].student == s]
         theirs = proc.examples["test"].cut[proc.examples["test"].student == src]
         assert np.array_equal(np.sort(ours), np.sort(theirs))
-    assert meta["metrics"]["pointer"]["ndcg"]["mean"] >= 0
+    source = load_json(out.parent / "runs" / "pointer-seed0" / "metrics.json")["splits"]["test"]["metrics"]
+    assert meta["metrics"]["pointer"]["ndcg"]["mean"] == round(source["ndcg"]["mean"], 4)
     assert (out / "README.md").exists()
 
 
@@ -81,7 +83,7 @@ def test_markov_from_saved_counts_matches_a_fresh_fit(bundle):
 
 
 def test_example_paths_and_pointer_attention(bundle):
-    _, out, _, demo = bundle
+    proc, out, _, demo = bundle
     e = 0
     ex = demo.example(e)
     k, n = demo.k, demo.ex.candidates.shape[1]
@@ -96,9 +98,17 @@ def test_example_paths_and_pointer_attention(bundle):
         assert steps[t, pointer[:t]].max() < 1e-6
     assert sorted(c["target_rank"] for c in ex["candidates"] if c["target_rank"]) == list(range(1, k + 1))
 
-    # The bundled checkpoint gives the same greedy path as on the source data.
+    # The bundled example is the source example, and the checkpoint gives the same greedy path on the source data.
+    src_ex = proc.examples["test"]
+    concepts = demo.inter.sequence(demo.ex.student[e])[0]
+    src = next(
+        i
+        for i in np.flatnonzero(src_ex.cut == demo.ex.cut[e])
+        if np.array_equal(proc.inter.sequence(src_ex.student[i])[0], concepts)
+    )
+    assert np.array_equal(src_ex.candidates[src], demo.ex.candidates[e])
     model, ckpt = load_checkpoint(out / "model.pt", torch.device("cpu"))
-    batch = make_batch(demo.inter, demo.ex, np.array([e]), ckpt["train_config"]["max_history"])
+    batch = make_batch(proc.inter, src_ex, np.array([src]), ckpt["train_config"]["max_history"])
     with torch.no_grad():
         assert model.recommend(batch, k).actions[0].tolist() == pointer
 

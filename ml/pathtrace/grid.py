@@ -30,7 +30,7 @@ from pathtrace.config import ModelConfig, TrainConfig
 from pathtrace.dkt import DKTConfig, collect_paths, gain_report, load_dkt, train_dkt
 from pathtrace.preprocess import load_processed
 from pathtrace.prereq import PrereqGraph, infer_and_report
-from pathtrace.rl import RLConfig, finetune
+from pathtrace.rl import RLConfig, build_reward_tables, finetune, oracle_paths
 from pathtrace.train import train_model
 from pathtrace.utils import get_device, load_json, save_json
 
@@ -137,7 +137,16 @@ def run_grid(
         log("[run]  DKT learning gain on test")
         model = load_dkt(runs / "dkt" / "dkt.pt", get_device(train_cfg.device))
         run_dirs = [runs / "baselines"] + sorted(d for d in runs.iterdir() if d.is_dir() and "-seed" in d.name)
-        paths = collect_paths(proc, "test", run_dirs, runs / "bkt" / "bkt_params.npz")
+        paths = collect_paths(proc, "test", run_dirs)
+        # The same oracle the report scores: exact best path under the RL reward, prerequisite penalty included.
+        tables = build_reward_tables(
+            proc,
+            "test",
+            BKTParams.load(runs / "bkt" / "bkt_params.npz"),
+            PrereqGraph.load(runs / "prereq" / "prereq_graph.npz"),
+            RLConfig().violation_weight,
+        )
+        paths["bkt_oracle"] = oracle_paths(tables, proc.data_cfg.path_len)
         report = gain_report(proc, model, "test", paths, max_examples=gain_max_examples)
         save_json(report, runs / "gain_test.json")
     log("grid finished")

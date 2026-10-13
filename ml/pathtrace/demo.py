@@ -124,7 +124,7 @@ class Demo:
                     "examples": len(self.by_student[s]),
                     "first_date": _date(times[0]),
                     "last_date": _date(times[-1]),
-                    "stage": max(set(stages), key=stages.count) if stages else "",
+                    "stage": max(sorted(set(stages)), key=stages.count) if stages else "",
                 }
             )
         return out
@@ -233,14 +233,16 @@ class Demo:
         for name, slots in paths.items():
             generator.manual_seed(example)
             state = tuple(s.repeat_interleave(rollouts, dim=1) for s in encoded)
+            probs = self.dkt.probs(state)
             curve = [before]
             for slot in slots:
                 concept = cands[slot].repeat(rollouts)
                 for _ in range(ATTEMPTS):
-                    p = self.dkt.probs(state).gather(1, concept.unsqueeze(1)).squeeze(1)
+                    p = probs.gather(1, concept.unsqueeze(1)).squeeze(1)
                     answers = (torch.rand(p.shape, generator=generator, device=self.device) < p).float()
                     state = self.dkt.step(concept, answers, state)
-                    curve.append(float(self.dkt.probs(state)[:, cands].mean()))
+                    probs = self.dkt.probs(state)
+                    curve.append(float(probs[:, cands].mean()))
             after = curve[-1]
             result[name] = {
                 "before": round(before, 4),

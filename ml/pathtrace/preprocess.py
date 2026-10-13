@@ -191,8 +191,11 @@ def load_log(path: str | Path, cfg: DataConfig) -> Interactions:
     concept, concept_names = _dense_ids(
         df[cfg.concept_col].cat.codes.to_numpy(), np.asarray(df[cfg.concept_col].cat.categories, dtype=str)
     )
-    correct = _parse_correct(df[cfg.correct_col])
-    time = _parse_time(df[cfg.time_col])
+    # Parse each distinct string once: Junyi has two correctness values and ~35k distinct 15-minute timestamps.
+    correct_codes, correct_values = pd.factorize(df[cfg.correct_col])
+    correct = _parse_correct(pd.Series(correct_values))[correct_codes]
+    time_codes, time_values = pd.factorize(df[cfg.time_col])
+    time = _parse_time(pd.Series(time_values))[time_codes]
     session = _optional_order(df, cfg.session_col)
     problem = _optional_order(df, cfg.problem_col)
 

@@ -90,6 +90,10 @@ def test_expected_gain_is_the_learning_step(m):
         m, False, learn, guess, slip
     )
     assert expected_next - m == pytest.approx((1 - m) * learn)
+    params = bkt.BKTParams.constant(3, 0.3, 0.15, guess, slip)
+    params.p_learn[2] = learn
+    gain = bkt.expected_gain(np.array([[m, m]]), np.array([[2, 1]]), params)
+    assert gain[0].tolist() == pytest.approx([expected_next - m, (1 - m) * 0.15])
 
 
 def test_candidate_mastery_replays_the_history():
