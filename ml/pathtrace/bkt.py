@@ -246,8 +246,8 @@ def fit_bkt(
         fitted=fitted,
     )
     info = {
-        "attempts": int(len(ch.y)),
-        "chains": int(len(ch.chain_concept)),
+        "attempts": len(ch.y),
+        "chains": len(ch.chain_concept),
         "concepts_fitted": int(fitted.sum()),
         "concepts_fallback": int(size - 1 - fitted.sum()),
         "global_params": {k: float(v[0]) for k, v in global_p.items()},

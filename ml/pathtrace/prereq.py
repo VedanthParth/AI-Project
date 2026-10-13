@@ -69,9 +69,7 @@ class PrereqGraph:
 # --------------------------------------------------------------------------- inference
 
 
-def _pair_counts(
-    inter: Interactions, students: np.ndarray, window: int, chunk: int = 2000
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _pair_counts(inter: Interactions, students: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Dense (C+1)^2 counts: a started strictly before b, and b within ``window`` new concepts of a.
 
     Also the mean normalised first-attempt position of each concept.
@@ -106,12 +104,12 @@ def _pair_counts(
         pairs = distinct[i].astype(np.int64) * size + distinct[j]
         before_idx.append(pairs)
         near_idx.append(pairs[(j - i) <= window])
-        if n % chunk == 0:
+        if n % 2000 == 0:
             flush()
     flush()
     with np.errstate(invalid="ignore"):
         mean_pos = np.where(pos_count > 0, pos_sum / pos_count, np.nan)
-    return before.reshape(size, size), near.reshape(size, size), mean_pos, pos_count
+    return before.reshape(size, size), near.reshape(size, size), mean_pos
 
 
 def _transitive_reduction(src: np.ndarray, dst: np.ndarray, rank: np.ndarray) -> np.ndarray:
@@ -143,9 +141,8 @@ def infer_graph(
     min_precedence: float = 0.9,
     min_proximity: float = 0.2,
     proximity_window: int = 5,
-    reduce: bool = True,
 ) -> tuple[PrereqGraph, dict]:
-    before, near, mean_pos, _ = _pair_counts(inter, students, proximity_window)
+    before, near, mean_pos = _pair_counts(inter, students, proximity_window)
     support = before + before.T
     with np.errstate(invalid="ignore", divide="ignore"):
         precedence = before / support
@@ -155,7 +152,7 @@ def infer_graph(
     candidate[0, :] = candidate[:, 0] = False
     src, dst = np.nonzero(candidate)
     info = {"edges_before_reduction": int(len(src))}
-    if reduce and len(src):
+    if len(src):
         rank = np.nan_to_num(mean_pos, nan=np.inf)
         keep = _transitive_reduction(src, dst, rank)
         src, dst = src[keep], dst[keep]

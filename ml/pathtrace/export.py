@@ -75,14 +75,12 @@ def subset_students(proc: Processed, split: str, students: np.ndarray) -> Proces
     examples[split] = Examples(**fields)
     splits = {name: np.zeros(0, np.int64) for name in SPLITS}
     splits[split] = np.arange(len(students), dtype=np.int64)
-    stats = {"students": len(students), "interactions": int(len(rows)), "examples": int(keep.sum())}
+    stats = {"students": len(students), "interactions": len(rows), "examples": int(keep.sum())}
     return Processed(sub_inter, splits, examples, proc.popularity, proc.data_cfg, stats)
 
 
-def concept_table(
-    concept_names: np.ndarray, popularity: np.ndarray, names_csv: Path, content_csv: Path | None
-) -> list[dict]:
-    """Display metadata for concept ids 1..C: English name, level, stage, difficulty, popularity."""
+def concept_table(concept_names: np.ndarray, names_csv: Path, content_csv: Path | None) -> list[dict]:
+    """Display metadata for concept ids 1..C: English name, level and learning stage."""
     ucids = concept_names[1:]
     names = pd.read_csv(names_csv).set_index("ucid").reindex(ucids)
     info = pd.read_csv(content_csv).set_index("ucid").reindex(ucids) if content_csv else None
@@ -94,12 +92,10 @@ def concept_table(
             "ucid": str(ucid),
             "name": row["name_en"] if isinstance(row["name_en"], str) else str(ucid),
             "level": row["level"] if isinstance(row["level"], str) else "",
-            "popularity": int(popularity[i + 1]),
         }
         if info is not None:
-            stage, difficulty = info.iloc[i]["learning_stage"], info.iloc[i]["difficulty"]
+            stage = info.iloc[i]["learning_stage"]
             entry["stage"] = stage if isinstance(stage, str) else ""
-            entry["difficulty"] = difficulty if isinstance(difficulty, str) and difficulty != "unset" else ""
         table.append(entry)
     return table
 
@@ -141,9 +137,7 @@ def export_bundle(
         shutil.copyfile(src, out / dst)
     src, dst, counts = transition_counts(proc)
     np.savez_compressed(out / "markov.npz", src=src, dst=dst, counts=counts)
-    concepts = concept_table(
-        proc.inter.concept_names, proc.popularity, Path(names_csv), content_csv and Path(content_csv)
-    )
+    concepts = concept_table(proc.inter.concept_names, Path(names_csv), content_csv and Path(content_csv))
     save_json(concepts, out / "concepts.json")
 
     model_metrics = load_json(runs / checkpoint / "metrics.json")
@@ -161,9 +155,9 @@ def export_bundle(
         "num_concepts": proc.inter.num_concepts,
         "path_len": int(proc.examples[split].targets.shape[1]),
         "num_candidates": int(proc.examples[split].candidates.shape[1]),
-        "students": int(len(chosen)),
-        "examples": int(len(sub.examples[split])),
-        "train_students": int(len(proc.splits["train"])),
+        "students": len(chosen),
+        "examples": len(sub.examples[split]),
+        "train_students": len(proc.splits["train"]),
         "metrics": metrics,
         "dkt_auc": dkt_summary.get("test", {}).get("auc"),
     }

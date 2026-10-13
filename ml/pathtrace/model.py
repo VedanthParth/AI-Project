@@ -100,18 +100,13 @@ class PathRecommender(nn.Module):
         steps: int,
         mode: str = "greedy",
         target_slots: torch.Tensor | None = None,
-        eligible: torch.Tensor | None = None,
     ) -> DecodeOutput:
         if mode not in {"teacher", "greedy", "sample"}:
             raise ValueError(f"unknown decode mode {mode!r}")
-        if mode == "teacher" and target_slots is None:
-            raise ValueError("teacher forcing needs target_slots")
         batch_size, num_cand, _ = cand.shape
         rows = torch.arange(batch_size, device=cand.device)
         keys = self.attn_e(cand)
         mask = torch.ones(batch_size, num_cand, dtype=torch.bool, device=cand.device)
-        if eligible is not None:
-            mask = mask & eligible
         h, c = state, torch.zeros_like(state)
         prev = self.start.expand(batch_size, -1)
         context = cand.mean(dim=1)

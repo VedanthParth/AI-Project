@@ -18,16 +18,10 @@ def model_and_batch(tiny_processed):
 
 
 @pytest.mark.parametrize("mode", ["greedy", "sample"])
-def test_decoder_never_repeats_or_picks_ineligible(model_and_batch, mode):
+def test_decoder_never_repeats_a_pick(model_and_batch, mode):
     model, batch = model_and_batch
-    eligible = torch.ones_like(batch.candidates, dtype=torch.bool)
-    eligible[:, :4] = False
-    out = model.decode(
-        model.encode_student(batch), model.encode_candidates(batch.candidates), 5, mode, eligible=eligible
-    )
-    actions = out.actions.numpy()
-    assert all(len(set(row)) == len(row) for row in actions)
-    assert (actions >= 4).all()
+    out = model.decode(model.encode_student(batch), model.encode_candidates(batch.candidates), 5, mode)
+    assert all(len(set(row)) == len(row) for row in out.actions.numpy())
     assert torch.allclose(out.probs.sum(-1), torch.ones(out.probs.shape[:2]))
     picked = out.probs.gather(2, out.actions.unsqueeze(-1)).squeeze(-1)
     assert torch.allclose(picked.log(), out.log_probs, atol=1e-5)

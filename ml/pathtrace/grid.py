@@ -59,7 +59,6 @@ def run_grid(
     rl: bool = True,
     sensitivity: bool = True,
     gain: bool = True,
-    gain_split: str = "test",
     gain_max_examples: int | None = 20_000,
     log: Callable[[str], None] = print,
 ) -> None:
@@ -135,10 +134,10 @@ def run_grid(
 
     # DKT learning gain of every method found under runs_dir (recomputed each time).
     if gain:
-        log(f"[run]  DKT learning gain on {gain_split}")
+        log("[run]  DKT learning gain on test")
         model = load_dkt(runs / "dkt" / "dkt.pt", get_device(train_cfg.device))
         run_dirs = [runs / "baselines"] + sorted(d for d in runs.iterdir() if d.is_dir() and "-seed" in d.name)
-        paths = collect_paths(proc, gain_split, run_dirs, runs / "bkt" / "bkt_params.npz")
-        report = gain_report(proc, model, gain_split, paths, max_examples=gain_max_examples)
-        save_json(report, runs / f"gain_{gain_split}.json")
+        paths = collect_paths(proc, "test", run_dirs, runs / "bkt" / "bkt_params.npz")
+        report = gain_report(proc, model, "test", paths, max_examples=gain_max_examples)
+        save_json(report, runs / "gain_test.json")
     log("grid finished")

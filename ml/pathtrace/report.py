@@ -21,11 +21,14 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
+import matplotlib
 import numpy as np
+from matplotlib.ticker import MaxNLocator, PercentFormatter
 
-from pathtrace import metrics
+from pathtrace import bkt, metrics, prereq
 from pathtrace.baselines import BASELINES
-from pathtrace.preprocess import Processed, load_processed
+from pathtrace.preprocess import load_processed
+from pathtrace.rl import RLConfig, build_reward_tables, oracle_paths
 from pathtrace.utils import load_json, save_json
 
 LABELS = {
@@ -98,8 +101,6 @@ def build_report(
     out_dir: str | Path,
     split: str = "test",
     n_boot: int = 1000,
-    violation_weight: float = 0.2,
-    figures: bool = True,
     log: Callable[[str], None] = print,
 ) -> dict:
     proc = load_processed(data_dir)
@@ -112,15 +113,12 @@ def build_report(
     preds = _collect_predictions(runs, split)
     tables = oracle = None
     if (runs / "bkt" / "bkt_params.npz").exists() and (runs / "prereq" / "prereq_graph.npz").exists():
-        from pathtrace import bkt, prereq
-        from pathtrace.rl import build_reward_tables, oracle_paths
-
         tables = build_reward_tables(
             proc,
             split,
             bkt.BKTParams.load(runs / "bkt" / "bkt_params.npz"),
             prereq.PrereqGraph.load(runs / "prereq" / "prereq_graph.npz"),
-            violation_weight,
+            RLConfig().violation_weight,
         )
         oracle = oracle_paths(tables, k)
         preds["bkt_oracle"] = [oracle]
@@ -165,8 +163,7 @@ def build_report(
     save_json(result, out / "results.json")
     _write_tables(result, out)
     log(f"wrote main_table.md/.csv/.tex and results.json to {out}")
-    if figures:
-        _figures(proc, runs, result, per_example_ndcg, out, log)
+    _figures(runs, result, per_example_ndcg, out, log)
     return result
 
 
@@ -226,8 +223,7 @@ def _write_tables(result: dict, out: Path) -> None:
 
     def tex(cell: str) -> str:
         return (
-            cell.replace("\\", "\\textbackslash{}")
-            .replace("%", "\\%")
+            cell.replace("%", "\\%")
             .replace("_", "\\_")
             .replace("±", "$\\pm$")
             .replace("Δ", "$\\Delta$")
@@ -255,8 +251,6 @@ def _write_tables(result: dict, out: Path) -> None:
 
 
 def _style(ax, integer_x: bool = False) -> None:
-    from matplotlib.ticker import MaxNLocator
-
     if integer_x:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_facecolor("white")
@@ -289,15 +283,10 @@ def _band(ax, histories: list[list[dict]], key: str, color: str, label: str) -> 
         ax.fill_between(epochs, values.min(axis=0), values.max(axis=0), color=color, alpha=0.15, linewidth=0)
 
 
-def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarray], out: Path, log) -> None:
-    try:
-        import matplotlib
+def _figures(runs: Path, result: dict, ndcg: dict[str, np.ndarray], out: Path, log) -> None:
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        log("matplotlib not installed; skipping figures (pip install matplotlib)")
-        return
     plt.rcParams.update({"font.size": 10, "figure.dpi": 150, "savefig.bbox": "tight", "savefig.facecolor": "white"})
 
     histories = _seed_histories(runs, "pointer")
@@ -355,7 +344,7 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
                 ax.fill_between(epochs, values.min(axis=0), values.max(axis=0), color=SERIES_1, alpha=0.15, linewidth=0)
             ax.set(title=title, xlabel="RL epoch (0 = supervised start)")
             _style(ax, integer_x=True)
-        left.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+        left.yaxis.set_major_formatter(PercentFormatter(1.0))
         seeds = f"mean of {len(rl_runs)} seeds, band = min to max" if len(rl_runs) > 1 else "one seed"
         fig.suptitle(f"RL fine-tuning ({seeds})", fontsize=10, color=INK_2, y=1.02)
         fig.savefig(out / "fig_rl.png")

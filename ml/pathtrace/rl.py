@@ -94,14 +94,14 @@ def build_reward_tables(
     return RewardTables(gains.astype(np.float64), always, need, violation_weight)
 
 
-def oracle_paths(tables: RewardTables, k: int, chunk: int = 256) -> np.ndarray:
+def oracle_paths(tables: RewardTables, k: int) -> np.ndarray:
     """Exact reward-maximising K-path for every example (brute force over K-permutations)."""
     n = tables.gains.shape[1]
     perms = np.array(list(permutations(range(n), k)))  # (P, K)
     need_count = tables.need.sum(axis=2)
     best = np.empty((len(tables.gains), k), dtype=np.int64)
-    for start in range(0, len(tables.gains), chunk):
-        sl = slice(start, start + chunk)
+    for start in range(0, len(tables.gains), 256):
+        sl = slice(start, start + 256)
         gains, always, need, count = tables.gains[sl], tables.always[sl], tables.need[sl], need_count[sl]
         total = gains[:, perms].sum(axis=2)  # (B, P)
         violations = np.zeros_like(total)

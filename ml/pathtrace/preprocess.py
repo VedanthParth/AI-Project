@@ -217,8 +217,8 @@ def split_students(num_students: int, fractions: tuple[float, float, float], see
     if len(fractions) != 3 or abs(sum(fractions) - 1.0) > 1e-6:
         raise ValueError(f"split fractions must be three numbers summing to 1, got {fractions}")
     perm = np.random.default_rng(seed).permutation(num_students)
-    n_train = int(round(fractions[0] * num_students))
-    n_val = int(round(fractions[1] * num_students))
+    n_train = round(fractions[0] * num_students)
+    n_val = round(fractions[1] * num_students)
     return {
         "train": np.sort(perm[:n_train]),
         "val": np.sort(perm[n_train : n_train + n_val]),

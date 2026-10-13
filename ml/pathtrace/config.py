@@ -110,6 +110,4 @@ def dataclass_from_args(cls: type[C], args: argparse.Namespace) -> C:
 
 
 def dataclass_from_dict(cls: type[C], values: dict[str, Any]) -> C:
-    known = {f.name for f in dataclasses.fields(cls)}
-    kwargs = {k: (tuple(v) if isinstance(v, list) else v) for k, v in values.items() if k in known}
-    return cls(**kwargs)
+    return cls(**{k: (tuple(v) if isinstance(v, list) else v) for k, v in values.items()})

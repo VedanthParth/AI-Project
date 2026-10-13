@@ -21,7 +21,14 @@ import argparse
 from pathlib import Path
 
 from pathtrace import metrics
-from pathtrace.config import DataConfig, ModelConfig, TrainConfig, add_dataclass_args, dataclass_from_args
+from pathtrace.config import (
+    DataConfig,
+    ModelConfig,
+    TrainConfig,
+    add_dataclass_args,
+    dataclass_from_args,
+    dataclass_from_dict,
+)
 from pathtrace.utils import save_json
 
 
@@ -240,7 +247,6 @@ def cmd_export(args: argparse.Namespace) -> None:
 
 
 def cmd_evaluate(args: argparse.Namespace) -> None:
-    from pathtrace.config import dataclass_from_dict
     from pathtrace.preprocess import load_processed
     from pathtrace.train import evaluate_model, load_checkpoint
     from pathtrace.utils import get_device
@@ -392,7 +398,7 @@ def main(argv: list[str] | None = None) -> None:
         help="CSV with ucid, name_en and level columns",
     )
     p.add_argument(
-        "--content", type=Path, default=None, help="Junyi Info_Content.csv, for learning stage and difficulty"
+        "--content", type=Path, default=None, help="Junyi Info_Content.csv, for each concept's learning stage"
     )
     p.add_argument("--split", choices=("val", "test"), default="test")
     p.add_argument("--max-students", type=int, default=300)

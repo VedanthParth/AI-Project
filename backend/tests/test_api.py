@@ -4,38 +4,35 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture(scope="module")
-def client(bundle, monkeypatch_module):
-    return TestClient(server.create_app(bundle, frontend_dir=None))
+def client(tmp_path_factory):
+    """The API on the committed bundle, serving a stand-in built frontend, with no Gemini key in the environment."""
+    frontend = tmp_path_factory.mktemp("dist")
+    (frontend / "index.html").write_text("<html>pathtrace</html>", encoding="utf-8")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.delenv("GEMINI_API_KEY", raising=False)
+        yield TestClient(server.create_app(server.DEFAULT_BUNDLE, frontend_dir=frontend))
 
 
-@pytest.fixture(scope="module")
-def monkeypatch_module():
-    mp = pytest.MonkeyPatch()
-    mp.delenv("GEMINI_API_KEY", raising=False)
-    yield mp
-    mp.undo()
-
-
-def test_health_and_info(client):
-    assert client.get("/api/health").json()["students"] == 8
+def test_info_and_students(client):
     info = client.get("/api/info").json()
-    assert info["path_len"] == 3 and "pointer" in info["metrics"] and info["dataset"]["license"] == "CC BY-NC-SA 4.0"
-
-
-def test_student_and_example_flow(client):
+    assert info["students"] == 300 and info["path_len"] == 3 and "pointer" in info["metrics"]
+    assert info["dataset"]["license"] == "CC BY-NC-SA 4.0"
     students = client.get("/api/students").json()
-    assert len(students) == 8
-    detail = client.get(f"/api/students/{students[0]['id']}").json()
+    assert len(students) == 300 and all(s["examples"] > 0 for s in students)
+
+
+def test_example_flow(client):
+    student = client.get("/api/students").json()[0]["id"]
+    detail = client.get(f"/api/students/{student}").json()
     example_id = detail["examples"][0]["id"]
     ex = client.get(f"/api/examples/{example_id}").json()
-    assert ex["student"] == students[0]["id"]
-    assert len(ex["candidates"]) == 10 and len(ex["pointer_steps"]) == 3
+    assert ex["student"] == student
+    assert len(ex["candidates"]) == 20 and len(ex["pointer_steps"]) == 3
     assert set(ex["paths"]) == {"pointer", "markov", "popularity", "bkt_gain", "actual"}
 
     sim = client.get(f"/api/examples/{example_id}/simulate").json()
-    assert set(sim["paths"]) == {"pointer", "markov", "popularity", "bkt_gain", "actual"}
-    custom = client.post(f"/api/examples/{example_id}/simulate", json={"paths": {"mine": [2, 0]}}).json()
-    assert len(custom["paths"]["mine"]["curve"]) == 1 + 2 * sim["attempts_per_concept"]
+    assert set(sim["paths"]) == set(ex["paths"])
+    assert all(len(p["curve"]) == 1 + 3 * sim["attempts_per_concept"] for p in sim["paths"].values())
 
     graph = client.get(f"/api/examples/{example_id}/graph").json()
     assert {c["id"] for c in ex["candidates"]} <= {n["id"] for n in graph["nodes"]}
@@ -44,8 +41,6 @@ def test_student_and_example_flow(client):
 def test_errors(client):
     assert client.get("/api/students/999").status_code == 404
     assert client.get("/api/examples/99999").status_code == 404
-    bad = client.post("/api/examples/0/simulate", json={"paths": {"bad": [0, 0]}})
-    assert bad.status_code == 422
     assert client.post("/api/examples/0/tutor", json={"kind": "concept"}).status_code == 422
     assert client.post("/api/examples/0/tutor", json={"kind": "other"}).status_code == 422
 
@@ -72,8 +67,6 @@ def test_tutor_calls_gemini_with_the_model_facts(client, monkeypatch):
     assert "pointer network chose this path" in seen["prompt"]
 
 
-def test_serves_the_built_frontend(bundle, tmp_path):
-    (tmp_path / "index.html").write_text("<html>pathtrace</html>", encoding="utf-8")
-    app = TestClient(server.create_app(bundle, frontend_dir=tmp_path))
-    assert "pathtrace" in app.get("/").text
-    assert app.get("/api/health").status_code == 200
+def test_serves_the_built_frontend_beside_the_api(client):
+    assert "pathtrace" in client.get("/").text
+    assert client.get("/api/info").status_code == 200

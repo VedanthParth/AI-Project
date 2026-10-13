@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from pathtrace import metrics
+from pathtrace import bkt, metrics
 from pathtrace.batching import make_batch
 from pathtrace.preprocess import Examples, Interactions, Processed
 from pathtrace.utils import get_device, save_json, set_seed
@@ -56,7 +56,6 @@ class DKTConfig:
 class DKT(nn.Module):
     def __init__(self, num_concepts: int, cfg: DKTConfig):
         super().__init__()
-        self.num_concepts = num_concepts
         # Interaction id = 2 * concept + correct; id 0/1 (concept 0) is padding.
         self.embed = nn.Embedding(2 * (num_concepts + 1), cfg.embed_dim, padding_idx=0)
         self.lstm = nn.LSTM(cfg.embed_dim, cfg.hidden_dim, batch_first=True)
@@ -141,7 +140,7 @@ def evaluate_dkt(model: DKT, inter: Interactions, students: np.ndarray, cfg: DKT
         labels.append(label.cpu().numpy())
     scores, labels = np.concatenate(scores), np.concatenate(labels)
     loss = F.binary_cross_entropy_with_logits(torch.from_numpy(scores), torch.from_numpy(labels)).item()
-    return {"auc": metrics.auc(labels, scores), "loss": loss, "predictions": int(len(labels))}
+    return {"auc": metrics.auc(labels, scores), "loss": loss, "predictions": len(labels)}
 
 
 def train_dkt(proc: Processed, cfg: DKTConfig, out_dir: str | Path, log: Callable[[str], None] = print) -> dict:
@@ -193,9 +192,7 @@ def train_dkt(proc: Processed, cfg: DKTConfig, out_dir: str | Path, log: Callabl
 
 def load_dkt(path: str | Path, device: torch.device) -> DKT:
     ckpt = torch.load(path, map_location=device, weights_only=False)
-    known = {f.name for f in dataclasses.fields(DKTConfig)}
-    cfg = DKTConfig(**{k: v for k, v in ckpt["config"].items() if k in known})
-    model = DKT(ckpt["num_concepts"], cfg)
+    model = DKT(ckpt["num_concepts"], DKTConfig(**ckpt["config"]))
     model.load_state_dict(ckpt["model_state"])
     return model.to(device).eval()
 
@@ -213,8 +210,6 @@ def learning_gain(
     attempts: int = 3,
     rollouts: int = 8,
     max_history: int = 200,
-    batch_size: int = 256,
-    seed: int = 0,
 ) -> dict[str, dict[str, np.ndarray]]:
     """Per-example E_before, E_after and E_p for each method's paths (candidate slots).
 
@@ -226,15 +221,15 @@ def learning_gain(
     generator = torch.Generator(device=device)
     before = np.empty(len(ex))
     after = {name: np.empty(len(ex)) for name in paths}
-    for start in range(0, len(ex), batch_size):
-        idx = np.arange(start, min(start + batch_size, len(ex)))
+    for start in range(0, len(ex), 256):
+        idx = np.arange(start, min(start + 256, len(ex)))
         batch = make_batch(inter, ex, idx, max_history).to(device)
         encoded = model.encode(batch.hist_concepts, batch.hist_correct, batch.lengths)
         cands = batch.candidates
         before[idx] = model.probs(encoded).gather(1, cands).mean(dim=1).cpu().numpy()
         cands_rep = cands.repeat_interleave(rollouts, dim=0)
         for name, method_paths in paths.items():
-            generator.manual_seed(seed + start)
+            generator.manual_seed(start)
             state = tuple(s.repeat_interleave(rollouts, dim=1) for s in encoded)
             slots = torch.from_numpy(method_paths[idx]).to(device)
             path_concepts = cands.gather(1, slots).repeat_interleave(rollouts, dim=0)
@@ -257,8 +252,6 @@ def collect_paths(
     proc: Processed, split: str, runs: list[Path], bkt_params: Path | None = None
 ) -> dict[str, np.ndarray]:
     """Paths to score: random, the students' own next concepts, saved predictions, and the BKT oracle."""
-    from pathtrace import bkt
-
     ex = proc.examples[split]
     k = proc.data_cfg.path_len
     rng = np.random.default_rng(0)
@@ -284,7 +277,6 @@ def gain_report(
     paths: dict[str, np.ndarray],
     *,
     max_examples: int | None = None,
-    n_boot: int = 1000,
     **kwargs,
 ) -> dict:
     ex = proc.examples[split]
@@ -299,7 +291,7 @@ def gain_report(
             name: {
                 "before": float(r["before"].mean()),
                 "after": float(r["after"].mean()),
-                "gain": metrics.summarize({"gain": r["gain"]}, n_boot)["gain"],
+                "gain": metrics.summarize({"gain": r["gain"]}, 1000)["gain"],
             }
             for name, r in results.items()
         },

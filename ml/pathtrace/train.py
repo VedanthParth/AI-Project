@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 from pathtrace import metrics
 from pathtrace.batching import iterate_batches
-from pathtrace.config import ModelConfig, TrainConfig, dataclass_from_dict
+from pathtrace.config import ModelConfig, TrainConfig
 from pathtrace.model import PathRecommender
 from pathtrace.preprocess import Processed
 from pathtrace.utils import get_device, save_json, set_seed
@@ -80,9 +80,7 @@ def save_checkpoint(
 
 def load_checkpoint(path: str | Path, device: torch.device) -> tuple[PathRecommender, dict]:
     ckpt = torch.load(path, map_location=device, weights_only=False)
-    # Checkpoints saved before first_step_ties existed were trained with the plain step-1 loss.
-    saved = {"first_step_ties": False, **ckpt["model_config"]}
-    model = PathRecommender(ckpt["num_concepts"], dataclass_from_dict(ModelConfig, saved))
+    model = PathRecommender(ckpt["num_concepts"], ModelConfig(**ckpt["model_config"]))
     model.load_state_dict(ckpt["model_state"])
     return model.to(device).eval(), ckpt
 

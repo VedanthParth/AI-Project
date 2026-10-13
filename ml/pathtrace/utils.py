@@ -30,8 +30,6 @@ def _to_builtin(obj: Any) -> Any:
         return float(obj)
     if isinstance(obj, np.ndarray):
         return obj.tolist()
-    if isinstance(obj, Path):
-        return str(obj)
     raise TypeError(f"not JSON serialisable: {type(obj).__name__}")
 
 

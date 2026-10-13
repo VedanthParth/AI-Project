@@ -32,8 +32,6 @@ from pathtrace.utils import get_device, load_json, save_json, set_seed
 
 
 class Baseline:
-    name = "baseline"
-
     def fit(self, proc: Processed) -> None:
         """Learn from ``proc.splits['train']`` / ``proc.examples['train']`` only."""
 
@@ -43,8 +41,6 @@ class Baseline:
 
 
 class RandomBaseline(Baseline):
-    name = "random"
-
     def __init__(self, seed: int = 0):
         self.seed = seed
 
@@ -53,8 +49,6 @@ class RandomBaseline(Baseline):
 
 
 class PopularityBaseline(Baseline):
-    name = "popularity"
-
     def score(self, proc: Processed, split: str) -> np.ndarray:
         return proc.popularity[proc.examples[split].candidates]
 
@@ -71,8 +65,6 @@ def transition_counts(proc: Processed) -> tuple[np.ndarray, np.ndarray, np.ndarr
 
 
 class MarkovBaseline(Baseline):
-    name = "markov"
-
     def __init__(self, order: int = 3, decay: float = 0.5):
         self.order = order
         self.decay = decay
@@ -124,8 +116,6 @@ class _NextItemNet(nn.Module):
 
 
 class GRUNextItemBaseline(Baseline):
-    name = "gru_next_item"
-
     def __init__(self, model_cfg: ModelConfig, cfg: TrainConfig, log: Callable[[str], None] = print):
         self.model_cfg = model_cfg
         self.cfg = cfg

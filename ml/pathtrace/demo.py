@@ -36,17 +36,17 @@ METHOD_LABELS = {
 
 
 def _date(seconds: float) -> str:
-    return dt.datetime.fromtimestamp(float(seconds), dt.timezone.utc).date().isoformat()
+    return dt.datetime.fromtimestamp(seconds, dt.timezone.utc).date().isoformat()
 
 
 class DemoError(ValueError):
-    """A request the bundle can't answer (unknown student or example, invalid path)."""
+    """A request the bundle can't answer: an unknown student or example."""
 
 
 class Demo:
-    def __init__(self, bundle_dir: str | Path, device: str = "cpu"):
+    def __init__(self, bundle_dir: str | Path):
         root = Path(bundle_dir)
-        self.device = torch.device(device)
+        self.device = torch.device("cpu")
         self.meta = load_json(root / "meta.json")
         self.concepts = {c["id"]: c for c in load_json(root / "concepts.json")}
         self.proc = load_processed(root / "data")
@@ -108,9 +108,6 @@ class Demo:
 
     # ------------------------------------------------------------------ queries
 
-    def info(self) -> dict:
-        return self.meta
-
     def students(self) -> list[dict]:
         out = []
         for s in range(self.inter.num_students):
@@ -121,10 +118,10 @@ class Demo:
                 {
                     "id": s,
                     "label": str(self.inter.student_uuid[s]),
-                    "attempts": int(len(concepts)),
-                    "concepts": int(len(np.unique(concepts))),
-                    "accuracy": round(float(correct.mean()), 3) if len(correct) else 0.0,
-                    "examples": int(len(self.by_student[s])),
+                    "attempts": len(concepts),
+                    "concepts": len(np.unique(concepts)),
+                    "accuracy": round(float(correct.mean()), 3),
+                    "examples": len(self.by_student[s]),
                     "first_date": _date(times[0]),
                     "last_date": _date(times[-1]),
                     "stage": max(set(stages), key=stages.count) if stages else "",
@@ -134,7 +131,6 @@ class Demo:
 
     def student(self, student: int) -> dict:
         self._check_student(student)
-        concepts, correct = self.inter.sequence(student)
         times = self.inter.times(student)
         examples = [
             {
@@ -144,19 +140,10 @@ class Demo:
             }
             for e in self.by_student[student]
         ]
-        return {
-            "id": student,
-            "label": str(self.inter.student_uuid[student]),
-            "attempts": [
-                {"concept": int(c), "correct": bool(y), "date": _date(t)}
-                for c, y, t in zip(concepts.tolist(), correct.tolist(), times.tolist())
-            ],
-            "examples": examples,
-        }
+        return {"id": student, "examples": examples}
 
-    def example(self, example: int) -> dict:
-        self._check_example(example)
-        e = example
+    def example(self, e: int) -> dict:
+        self._check_example(e)
         student, cut = int(self.ex.student[e]), int(self.ex.cut[e])
         cands = self.ex.candidates[e]
         concepts, correct = self.inter.sequence(student)
@@ -170,7 +157,7 @@ class Demo:
 
         rng = np.random.default_rng(e)
         paths = {"pointer": pointer}
-        for name in ("markov", "popularity", "bkt_gain"):
+        for name in METHODS[1:]:
             paths[name] = metrics.top_k(self.scores[name][e : e + 1], self.k, rng)[0]
         targets = self.ex.target_slots[e]
         paths["actual"] = targets
@@ -184,12 +171,9 @@ class Demo:
             unmet = [p for p in self.parents[c] if p not in seen]
             candidates.append(
                 {
-                    "slot": i,
                     **self._concept(c),
                     "mastery": round(float(self.mastery[e, i]), 3),
                     "bkt_gain": round(float(self.scores["bkt_gain"][e, i]), 4),
-                    "popularity": int(self.proc.popularity[c]),
-                    "markov": round(float(self.scores["markov"][e, i]), 4),
                     "unmet_prereqs": [self._concept(p) for p in unmet],
                     "target_rank": int(np.flatnonzero(targets == i)[0]) + 1 if i in targets else None,
                 }
@@ -198,21 +182,18 @@ class Demo:
         def describe(name: str, slots: np.ndarray) -> dict:
             slots = np.asarray(slots)
             return {
-                "name": name,
                 "label": METHOD_LABELS[name],
                 "slots": slots.tolist(),
                 "concepts": [self._concept(cands[s]) for s in slots],
                 "hits": int(np.isin(slots, targets).sum()),
                 "first_step": bool(slots[0] in targets[:first_group]),
                 "violations": int(prereq.path_violations(slots[None], self.always[e : e + 1], self.need[e : e + 1])[0]),
-                "bkt_reward": round(float(self.scores["bkt_gain"][e, slots].sum()), 4),
             }
 
         recent_ids = list(dict.fromkeys(reversed(concepts[:cut].tolist())))[:12]
         return {
             "id": e,
             "student": student,
-            "cut": cut,
             "date": _date(times[cut]),
             "history": {
                 "attempts": cut,
@@ -235,7 +216,7 @@ class Demo:
         }
 
     @torch.no_grad()
-    def simulate(self, example: int, paths: dict[str, list[int]], rollouts: int = ROLLOUTS, seed: int = 0) -> dict:
+    def simulate(self, example: int, paths: dict[str, list[int]], rollouts: int = ROLLOUTS) -> dict:
         """DKT rollout of each path: mean predicted success on the candidates after every attempt.
 
         As in the paper's learning-gain metric, each path concept gets ``ATTEMPTS``
@@ -243,55 +224,39 @@ class Demo:
         every path sees the same random draws.
         """
         self._check_example(example)
-        n = self.ex.candidates.shape[1]
-        for name, slots in paths.items():
-            if not slots or len(slots) > self.k or len(set(slots)) != len(slots) or not all(0 <= s < n for s in slots):
-                raise DemoError(f"path {name!r} must be 1-{self.k} distinct slots in 0..{n - 1}")
         batch = make_batch(self.inter, self.ex, np.array([example]), 200).to(self.device)
         encoded = self.dkt.encode(batch.hist_concepts, batch.hist_correct, batch.lengths)
         cands = batch.candidates[0]
-        before_all = self.dkt.probs(encoded)[0]
-        before = float(before_all[cands].mean())
+        before = float(self.dkt.probs(encoded)[0, cands].mean())
         generator = torch.Generator(device=self.device)
         result = {}
         for name, slots in paths.items():
-            generator.manual_seed(seed + example)
+            generator.manual_seed(example)
             state = tuple(s.repeat_interleave(rollouts, dim=1) for s in encoded)
             curve = [before]
-            per_concept = []
             for slot in slots:
                 concept = cands[slot].repeat(rollouts)
-                start = float(self.dkt.probs(state)[:, concept[0]].mean())
                 for _ in range(ATTEMPTS):
                     p = self.dkt.probs(state).gather(1, concept.unsqueeze(1)).squeeze(1)
                     answers = (torch.rand(p.shape, generator=generator, device=self.device) < p).float()
                     state = self.dkt.step(concept, answers, state)
                     curve.append(float(self.dkt.probs(state)[:, cands].mean()))
-                per_concept.append(
-                    {
-                        "slot": slot,
-                        **self._concept(int(cands[slot])),
-                        "before": round(start, 4),
-                        "after": round(float(self.dkt.probs(state)[:, concept[0]].mean()), 4),
-                    }
-                )
             after = curve[-1]
             result[name] = {
                 "before": round(before, 4),
                 "after": round(after, 4),
                 "gain": round((after - before) / max(1.0 - before, 1e-6), 4),
                 "curve": [round(v, 4) for v in curve],
-                "concepts": per_concept,
             }
         return {"attempts_per_concept": ATTEMPTS, "rollouts": rollouts, "paths": result}
 
-    def neighbourhood(self, example: int, max_nodes: int = 60) -> dict:
+    def neighbourhood(self, example: int) -> dict:
         """Candidates, their prerequisites and the edges between them, with mastery and status."""
         self._check_example(example)
         student, cut = int(self.ex.student[example]), int(self.ex.cut[example])
         cands = self.ex.candidates[example].tolist()
         mastery_now, _ = self._mastery_at(student, cut)
-        nodes = list(dict.fromkeys(cands + [p for c in cands for p in self.parents[c]]))[:max_nodes]
+        nodes = list(dict.fromkeys(cands + [p for c in cands for p in self.parents[c]]))[:60]
         keep = set(nodes)
         edges = [{"source": p, "target": c} for c in nodes for p in self.parents[c] if p in keep]
         return {

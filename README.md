@@ -33,7 +33,8 @@ students, 3.2 MB) and serves the built frontend. Nothing else needs downloading.
 - **Tutor.** It works without a key, answering from a template. For Gemini answers, copy
   `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY`, or paste a key in the app.
 - **Frontend development.** Run `npm run dev` in `frontend/` alongside the server; Vite
-  proxies `/api` to port 8000.
+  proxies `/api` to port 8000. `npm run lint` runs oxlint. Set `VITE_API_URL` at build time to
+  call an API on another origin.
 - **Tests and lint.** `python -m pytest backend/tests`, `python -m pytest ml`, and `ruff check ml backend`
   (`ruff format ml backend` reformats; settings are in `ruff.toml`).
 

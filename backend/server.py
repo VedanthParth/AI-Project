@@ -28,10 +28,6 @@ DEFAULT_FRONTEND = ROOT.parent / "frontend" / "dist"
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
-class SimulateRequest(BaseModel):
-    paths: dict[str, list[int]] = Field(description="method name -> candidate slots, in order")
-
-
 class TutorRequest(BaseModel):
     kind: str = Field(
         "why", pattern="^(why|concept)$", description="'why' explains the path, 'concept' teaches one concept"
@@ -119,7 +115,7 @@ def tutor_prompt(demo: Demo, example: int, req: TutorRequest) -> str:
 
 def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path | None = DEFAULT_FRONTEND) -> FastAPI:
     demo = Demo(bundle_dir)
-    app = FastAPI(title="PathTrace demo API", version="1.0")
+    app = FastAPI(title="PathTrace demo API")
     example = lru_cache(maxsize=512)(demo.example)
     students = demo.students()
 
@@ -127,15 +123,11 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
         try:
             return fn(*args)
         except DemoError as err:
-            raise HTTPException(status_code=404 if "unknown" in str(err) else 422, detail=str(err)) from err
-
-    @app.get("/api/health")
-    def health() -> dict:
-        return {"status": "ok", "students": demo.inter.num_students, "examples": len(demo.ex)}
+            raise HTTPException(status_code=404, detail=str(err)) from err
 
     @app.get("/api/info")
     def info() -> dict:
-        return demo.info()
+        return demo.meta
 
     @app.get("/api/students")
     def list_students() -> list[dict]:
@@ -150,14 +142,9 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
         return guard(example, example_id)
 
     @app.get("/api/examples/{example_id}/simulate")
-    def simulate_methods(example_id: int) -> dict:
+    def simulate(example_id: int) -> dict:
         ex = guard(example, example_id)
-        paths = {name: ex["paths"][name]["slots"] for name in (*METHODS, "actual")}
-        return guard(demo.simulate, example_id, paths)
-
-    @app.post("/api/examples/{example_id}/simulate")
-    def simulate_paths(example_id: int, req: SimulateRequest) -> dict:
-        return guard(demo.simulate, example_id, req.paths)
+        return demo.simulate(example_id, {name: ex["paths"][name]["slots"] for name in (*METHODS, "actual")})
 
     @app.get("/api/examples/{example_id}/graph")
     def graph(example_id: int) -> dict:

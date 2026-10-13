@@ -23,7 +23,6 @@ def generate_log(
     num_concepts: int = 120,
     mean_length: int = 150,
     seed: int = 0,
-    window_minutes: int = 15,
 ) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     # Concept names are shuffled so that id order does not reveal curriculum order.
@@ -75,15 +74,12 @@ def generate_log(
             sessions.append(int(session_count[current]))
             problems.append(problem_in_session)
 
-    stamps = start + pd.to_timedelta(np.asarray(times), unit="s")
-    if window_minutes:
-        stamps = stamps.floor(f"{window_minutes}min")
+    stamps = (start + pd.to_timedelta(np.asarray(times), unit="s")).floor("15min")
     df = pd.DataFrame(
         {
             "timestamp_TW": stamps.strftime("%Y-%m-%d %H:%M:%S UTC"),
             "uuid": students,
             "ucid": concepts,
-            "upid": rng.integers(0, 10_000, len(students)),
             "problem_number": problems,
             "exercise_problem_repeat_session": sessions,
             "is_correct": correct,
