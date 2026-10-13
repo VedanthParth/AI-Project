@@ -57,9 +57,7 @@ class PathRecommender(nn.Module):
         self.student_gru = nn.GRU(d + 1, h, batch_first=True)
 
         if cfg.attn_layers > 0:
-            layer = nn.TransformerEncoderLayer(
-                d, cfg.attn_heads, cfg.ff_dim, cfg.dropout, batch_first=True
-            )
+            layer = nn.TransformerEncoderLayer(d, cfg.attn_heads, cfg.ff_dim, cfg.dropout, batch_first=True)
             self.candidate_encoder: nn.Module = nn.TransformerEncoder(
                 layer, cfg.attn_layers, enable_nested_tensor=False
             )
@@ -81,11 +79,13 @@ class PathRecommender(nn.Module):
         e = self.dropout(self.embed(batch.hist_concepts))
         return torch.cat([e, batch.hist_correct.unsqueeze(-1)], dim=-1)
 
-    def encode_student(self, batch: Batch) -> torch.Tensor:
-        packed = pack_padded_sequence(
+    def _packed_history(self, batch: Batch):
+        return pack_padded_sequence(
             self._history_inputs(batch), batch.lengths.cpu(), batch_first=True, enforce_sorted=False
         )
-        _, h_n = self.student_gru(packed)
+
+    def encode_student(self, batch: Batch) -> torch.Tensor:
+        _, h_n = self.student_gru(self._packed_history(batch))
         return h_n[-1]
 
     def encode_candidates(self, candidates: torch.Tensor) -> torch.Tensor:
@@ -182,10 +182,8 @@ class PathRecommender(nn.Module):
 
     def kt_logits(self, batch: Batch) -> torch.Tensor:
         """Logit that attempt t+1 is correct given attempts <= t, shape (B, T-1)."""
-        x = self._history_inputs(batch)
-        packed = pack_padded_sequence(x, batch.lengths.cpu(), batch_first=True, enforce_sorted=False)
-        out, _ = self.kt_gru(packed)
-        out, _ = pad_packed_sequence(out, batch_first=True, total_length=x.size(1))
+        out, _ = self.kt_gru(self._packed_history(batch))
+        out, _ = pad_packed_sequence(out, batch_first=True, total_length=batch.hist_concepts.size(1))
         next_concept = self.embed(batch.hist_concepts[:, 1:])
         return self.kt_head(torch.cat([out[:, :-1], next_concept], dim=-1)).squeeze(-1)
 

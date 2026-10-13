@@ -118,7 +118,16 @@ def oracle_paths(tables: RewardTables, k: int, chunk: int = 256) -> np.ndarray:
 
 
 @torch.no_grad()
-def evaluate_policy(model, proc: Processed, split: str, tables: RewardTables, oracle_reward: np.ndarray, cfg: RLConfig, device, n_boot: int = 0) -> tuple[dict, np.ndarray]:
+def evaluate_policy(
+    model,
+    proc: Processed,
+    split: str,
+    tables: RewardTables,
+    oracle_reward: np.ndarray,
+    cfg: RLConfig,
+    device,
+    n_boot: int = 0,
+) -> tuple[dict, np.ndarray]:
     model.eval()
     ex = proc.examples[split]
     k = proc.data_cfg.path_len
@@ -162,14 +171,19 @@ def finetune(
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr)
 
     log("building reward tables (BKT gains and prerequisite constraints)")
-    tables = {split: build_reward_tables(proc, split, params, graph, cfg.violation_weight) for split in ("train", "val", "test")}
+    tables = {
+        split: build_reward_tables(proc, split, params, graph, cfg.violation_weight)
+        for split in ("train", "val", "test")
+    }
     oracle = {}
     for split in ("val", "test"):
         idx = np.arange(len(proc.examples[split]))
         oracle[split] = tables[split].reward(idx, oracle_paths(tables[split], k))
 
     start_val, _ = evaluate_policy(model, proc, "val", tables["val"], oracle["val"], cfg, device)
-    log(f"supervised start: val reward {start_val['reward']['mean']:.4f} ({start_val['share_of_oracle']:.1%} of oracle)")
+    log(
+        f"supervised start: val reward {start_val['reward']['mean']:.4f} ({start_val['share_of_oracle']:.1%} of oracle)"
+    )
     best_reward, best_epoch = start_val["reward"]["mean"], 0
     best_state = copy.deepcopy(model.state_dict())
     history: list[dict] = [{"epoch": 0, "val_reward": best_reward, "val_ndcg": start_val["metrics"]["ndcg"]["mean"]}]
@@ -227,7 +241,8 @@ def finetune(
         history.append(record)
         save_json(history, out / "history.json")
         log(
-            f"RL epoch {epoch:2d}  train reward sampled {record['train_sampled_reward']:.4f} greedy {record['train_greedy_reward']:.4f}"
+            f"RL epoch {epoch:2d}  train reward sampled {record['train_sampled_reward']:.4f}"
+            f" greedy {record['train_greedy_reward']:.4f}"
             f"  entropy {record['train_entropy']:.3f}  |  val reward {val['reward']['mean']:.4f}"
             f" ({val['share_of_oracle']:.1%} of oracle)  ndcg {record['val_ndcg']:.4f}  ({record['seconds']}s)"
         )
@@ -250,9 +265,10 @@ def finetune(
         "splits": {},
     }
     for split in ("val", "test"):
-        result, pred = evaluate_policy(model, proc, split, tables[split], oracle[split], cfg, device, n_boot=cfg.bootstrap)
+        result, pred = evaluate_policy(
+            model, proc, split, tables[split], oracle[split], cfg, device, n_boot=cfg.bootstrap
+        )
         results["splits"][split] = result
         np.save(out / f"preds_{split}.npy", pred)
     save_json(results, out / "metrics.json")
     return results
-

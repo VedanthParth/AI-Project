@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from pathtrace.dkt import DKT, DKTConfig, evaluate_dkt, learning_gain, train_dkt
+from pathtrace.dkt import DKT, DKTConfig, evaluate_dkt, learning_gain, load_dkt, train_dkt
 
 
 @pytest.fixture(scope="module")
@@ -10,8 +10,6 @@ def trained(tiny_processed, tmp_path_factory):
     cfg = DKTConfig(hidden_dim=32, embed_dim=16, max_epochs=3, patience=3, batch_size=32)
     out = tmp_path_factory.mktemp("dkt")
     summary = train_dkt(tiny_processed, cfg, out, log=lambda _: None)
-    from pathtrace.dkt import load_dkt
-
     return load_dkt(out / "dkt.pt", torch.device("cpu")), summary
 
 
@@ -26,7 +24,9 @@ def test_step_continues_the_encoded_history(tiny_processed):
     concepts = torch.tensor([[3, 5, 3, 7]])
     correct = torch.tensor([[1, 0, 1, 1]])
     full = model.encode(concepts, correct, torch.tensor([4]))
-    stepped = model.step(concepts[:, 3], correct[:, 3].float(), model.encode(concepts[:, :3], correct[:, :3], torch.tensor([3])))
+    stepped = model.step(
+        concepts[:, 3], correct[:, 3].float(), model.encode(concepts[:, :3], correct[:, :3], torch.tensor([3]))
+    )
     assert torch.allclose(full[0], stepped[0], atol=1e-6)
     assert torch.allclose(full[1], stepped[1], atol=1e-6)
 

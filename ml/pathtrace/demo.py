@@ -75,8 +75,8 @@ class Demo:
         self.mastery = bkt.candidate_mastery(self.inter, self.ex, self.params)
         self.scores["bkt_gain"] = bkt.expected_gain(self.mastery, self.ex.candidates, self.params)
         self.always, self.need = prereq.example_constraints(self.inter, self.ex, self.graph)
-        self.by_student = [np.flatnonzero(self.ex.student == s) for s in range(self.inter.num_students)]
-        self.by_student = [idx[np.argsort(self.ex.cut[idx], kind="stable")] for idx in self.by_student]
+        order = np.lexsort((self.ex.cut, self.ex.student))  # each student's examples, earliest cut first
+        self.by_student = [order[self.ex.student[order] == s] for s in range(self.inter.num_students)]
 
     # ------------------------------------------------------------------ helpers
 
@@ -109,7 +109,7 @@ class Demo:
     # ------------------------------------------------------------------ queries
 
     def info(self) -> dict:
-        return {**self.meta, "method_labels": METHOD_LABELS}
+        return self.meta
 
     def students(self) -> list[dict]:
         out = []
@@ -172,8 +172,8 @@ class Demo:
         paths = {"pointer": pointer}
         for name in ("markov", "popularity", "bkt_gain"):
             paths[name] = metrics.top_k(self.scores[name][e : e + 1], self.k, rng)[0]
-        paths["actual"] = self.ex.target_slots[e]
         targets = self.ex.target_slots[e]
+        paths["actual"] = targets
         first_group = int(self.ex.first_group[e])
 
         mastery_now, counts = self._mastery_at(student, cut)
@@ -268,8 +268,12 @@ class Demo:
                     state = self.dkt.step(concept, answers, state)
                     curve.append(float(self.dkt.probs(state)[:, cands].mean()))
                 per_concept.append(
-                    {"slot": slot, **self._concept(int(cands[slot])), "before": round(start, 4),
-                     "after": round(float(self.dkt.probs(state)[:, concept[0]].mean()), 4)}
+                    {
+                        "slot": slot,
+                        **self._concept(int(cands[slot])),
+                        "before": round(start, 4),
+                        "after": round(float(self.dkt.probs(state)[:, concept[0]].mean()), 4),
+                    }
                 )
             after = curve[-1]
             result[name] = {
@@ -289,12 +293,7 @@ class Demo:
         mastery_now, _ = self._mastery_at(student, cut)
         nodes = list(dict.fromkeys(cands + [p for c in cands for p in self.parents[c]]))[:max_nodes]
         keep = set(nodes)
-        edges = [
-            {"source": p, "target": c}
-            for c in nodes
-            for p in self.parents[c]
-            if p in keep
-        ]
+        edges = [{"source": p, "target": c} for c in nodes for p in self.parents[c] if p in keep]
         return {
             "nodes": [
                 {

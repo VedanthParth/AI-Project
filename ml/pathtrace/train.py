@@ -63,7 +63,9 @@ def evaluate_model(
     return result, pred
 
 
-def save_checkpoint(path: Path, model: PathRecommender, model_cfg: ModelConfig, cfg: TrainConfig, proc: Processed) -> None:
+def save_checkpoint(
+    path: Path, model: PathRecommender, model_cfg: ModelConfig, cfg: TrainConfig, proc: Processed
+) -> None:
     torch.save(
         {
             "model_state": model.state_dict(),

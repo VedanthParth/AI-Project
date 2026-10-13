@@ -40,6 +40,7 @@ from pathtrace.utils import save_json
 # The single parameter set the paper used for every concept.
 PAPER_DEFAULTS = {"p_init": 0.30, "p_learn": 0.15, "p_guess": 0.20, "p_slip": 0.10}
 EPS = 1e-4
+PARAM_NAMES = ("p_init", "p_learn", "p_guess", "p_slip")
 
 
 @dataclass
@@ -53,23 +54,26 @@ class BKTParams:
     fitted: np.ndarray  # bool: True = own fit, False = global fallback
 
     @classmethod
-    def constant(cls, num_concepts: int, p_init: float, p_learn: float, p_guess: float, p_slip: float) -> "BKTParams":
+    def constant(cls, num_concepts: int, p_init: float, p_learn: float, p_guess: float, p_slip: float) -> BKTParams:
         def full(value: float) -> np.ndarray:
             return np.full(num_concepts + 1, value, dtype=np.float64)
 
         return cls(full(p_init), full(p_learn), full(p_guess), full(p_slip), np.zeros(num_concepts + 1, dtype=bool))
 
     @classmethod
-    def paper_defaults(cls, num_concepts: int) -> "BKTParams":
+    def paper_defaults(cls, num_concepts: int) -> BKTParams:
         return cls.constant(num_concepts, **PAPER_DEFAULTS)
 
+    def as_dict(self) -> dict[str, np.ndarray]:
+        return {name: getattr(self, name) for name in PARAM_NAMES}
+
     def save(self, path: str | Path) -> None:
-        np.savez(path, p_init=self.p_init, p_learn=self.p_learn, p_guess=self.p_guess, p_slip=self.p_slip, fitted=self.fitted)
+        np.savez(path, **self.as_dict(), fitted=self.fitted)
 
     @classmethod
-    def load(cls, path: str | Path) -> "BKTParams":
+    def load(cls, path: str | Path) -> BKTParams:
         with np.load(path) as z:
-            return cls(z["p_init"], z["p_learn"], z["p_guess"], z["p_slip"], z["fitted"])
+            return cls(*(z[name] for name in PARAM_NAMES), z["fitted"])
 
 
 # --------------------------------------------------------------------------- packed chains
@@ -135,7 +139,7 @@ def _forward(ch: _Chains, cid: np.ndarray, p: dict[str, np.ndarray]) -> tuple[np
     """Filtered P(mastered) and P(unmastered) per row, and each row's P(y_t | y_<t)."""
     total = len(ch.y)
     a_l, a_u, scale = np.empty(total), np.empty(total), np.empty(total)
-    init, learn, guess, slip = (p[k][cid] for k in ("p_init", "p_learn", "p_guess", "p_slip"))
+    init, learn, guess, slip = (p[k][cid] for k in PARAM_NAMES)
     for t in range(len(ch.n_active)):
         n = ch.n_active[t]
         rows = ch.rows(t)
@@ -155,7 +159,7 @@ def _forward(ch: _Chains, cid: np.ndarray, p: dict[str, np.ndarray]) -> tuple[np
 
 def _em_step(ch: _Chains, cid: np.ndarray, num: int, p: dict[str, np.ndarray]) -> tuple[dict[str, np.ndarray], float]:
     a_l, a_u, scale = _forward(ch, cid, p)
-    learn, guess, slip = (p[k][cid] for k in ("p_learn", "p_guess", "p_slip"))
+    learn, guess, slip = (p[k][cid] for k in PARAM_NAMES[1:])
     total = len(ch.y)
     b_l, b_u = np.ones(total), np.ones(total)
     xi = np.zeros(total)  # expected U->L transitions between row t and t+1
@@ -238,7 +242,7 @@ def fit_bkt(
     fitted = attempts >= min_attempts
     fitted[0] = False
     params = BKTParams(
-        **{k: np.where(fitted, per_p[k], global_p[k][0]) for k in ("p_init", "p_learn", "p_guess", "p_slip")},
+        **{k: np.where(fitted, per_p[k], global_p[k][0]) for k in PARAM_NAMES},
         fitted=fitted,
     )
     info = {
@@ -261,8 +265,7 @@ def fit_bkt(
 def log_likelihood(inter: Interactions, students: np.ndarray, params: BKTParams, max_chain_len: int = 200) -> float:
     """Mean log-likelihood per attempt of the given students' answers."""
     ch = _build_chains(inter, students, max_chain_len)
-    p = {"p_init": params.p_init, "p_learn": params.p_learn, "p_guess": params.p_guess, "p_slip": params.p_slip}
-    _, _, scale = _forward(ch, ch.chain_concept, p)
+    _, _, scale = _forward(ch, ch.chain_concept, params.as_dict())
     return float(np.log(scale).mean())
 
 
@@ -326,8 +329,8 @@ def fit_and_report(proc: Processed, out_dir: str | Path, log: Callable[[str], No
     k = proc.data_cfg.path_len
 
     summary: dict = {"fit": info, "params": {}, "heldout_loglik_per_attempt": {}, "reward": {}}
-    for key in ("p_init", "p_learn", "p_guess", "p_slip"):
-        values = getattr(params, key)[params.fitted]
+    for key, values in params.as_dict().items():
+        values = values[params.fitted]
         if values.size:
             q = np.percentile(values, [10, 50, 90])
             summary["params"][key] = {"p10": q[0], "median": q[1], "p90": q[2]}

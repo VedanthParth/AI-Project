@@ -1,18 +1,18 @@
 """Command line: ``python -m pathtrace <command>`` (or ``pathtrace <command>``).
 
-    synth      write a synthetic Junyi-shaped log (development and tests only)
-    prepare    raw log -> student split + path examples
-    baselines  fit and evaluate Random / Popularity / Markov / GRU next-item
-    train      supervised training of the pointer network, then val/test evaluation
-    bkt        fit per-concept BKT (the RL reward's student simulator)
-    prereq     infer a prerequisite graph from first-attempt order
-    dkt        train the DKT evaluator (held out from training the recommenders)
-    gain       DKT learning gain of recommended paths
-    finetune   corrected REINFORCE fine-tuning against the BKT reward
-    grid       the full experiment grid for one dataset (resumable)
-    report     paper tables and figures from a dataset's runs
-    export     bundle a trained model, simulators and sample students for the app
-    evaluate   re-evaluate a saved checkpoint on one split
+synth      write a synthetic Junyi-shaped log (development and tests only)
+prepare    raw log -> student split + path examples
+baselines  fit and evaluate Random / Popularity / Markov / GRU next-item
+train      supervised training of the pointer network, then val/test evaluation
+bkt        fit per-concept BKT (the RL reward's student simulator)
+prereq     infer a prerequisite graph from first-attempt order
+dkt        train the DKT evaluator (held out from training the recommenders)
+gain       DKT learning gain of recommended paths
+finetune   corrected REINFORCE fine-tuning against the BKT reward
+grid       the full experiment grid for one dataset (resumable)
+report     paper tables and figures from a dataset's runs
+export     bundle a trained model, simulators and sample students for the app
+evaluate   re-evaluate a saved checkpoint on one split
 """
 
 from __future__ import annotations
@@ -74,7 +74,9 @@ def cmd_train(args: argparse.Namespace) -> None:
     from pathtrace.train import train_model
 
     proc = load_processed(args.data)
-    results = train_model(proc, dataclass_from_args(ModelConfig, args), dataclass_from_args(TrainConfig, args), args.out)
+    results = train_model(
+        proc, dataclass_from_args(ModelConfig, args), dataclass_from_args(TrainConfig, args), args.out
+    )
     print(f"\nbest epoch {results['best_epoch']}, {results['parameters']:,} parameters")
     for split in ("val", "test"):
         result = results["splits"][split]
@@ -140,7 +142,10 @@ def cmd_dkt(args: argparse.Namespace) -> None:
 
     cfg = DKTConfig(hidden_dim=args.hidden_dim, max_epochs=args.max_epochs, seed=args.seed, device=args.device)
     summary = train_dkt(load_processed(args.data), cfg, args.out)
-    print(f"\nDKT best epoch {summary['best_epoch']}: val AUC {summary['val']['auc']:.4f}, test AUC {summary['test']['auc']:.4f}")
+    print(
+        f"\nDKT best epoch {summary['best_epoch']}: "
+        f"val AUC {summary['val']['auc']:.4f}, test AUC {summary['test']['auc']:.4f}"
+    )
     print(f"saved dkt.pt and dkt_summary.json to {args.out}")
 
 
@@ -159,7 +164,9 @@ def cmd_gain(args: argparse.Namespace) -> None:
     print(f"{'':16}{'before':>10}{'after':>10}{'E_p':>10}{'95% CI':>20}")
     for name, r in sorted(report["methods"].items(), key=lambda kv: -kv[1]["gain"]["mean"]):
         g = r["gain"]
-        print(f"{name:16}{r['before']:10.4f}{r['after']:10.4f}{g['mean']:10.4f}   [{g['ci_low']:.4f}, {g['ci_high']:.4f}]")
+        print(
+            f"{name:16}{r['before']:10.4f}{r['after']:10.4f}{g['mean']:10.4f}   [{g['ci_low']:.4f}, {g['ci_high']:.4f}]"
+        )
     if args.out:
         save_json(report, args.out)
 
@@ -249,10 +256,15 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="pathtrace", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog="pathtrace", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--threads", type=int, default=0,
-        help="PyTorch CPU threads (0 = default). Use 1 when running several jobs at once: oversubscribed threads slow everything down sharply",
+        "--threads",
+        type=int,
+        default=0,
+        help="PyTorch CPU threads (0 = default). Use 1 when running several jobs at once: "
+        "oversubscribed threads slow everything down sharply",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -296,10 +308,16 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("prereq", help="infer a prerequisite graph from training students' first-attempt order")
     p.add_argument("--data", type=Path, required=True, help="processed data directory")
     p.add_argument("--out", type=Path, required=True, help="output directory (prereq_graph.npz, prereq_summary.json)")
-    p.add_argument("--content", type=Path, default=None, help="Info_Content.csv, to check edges against Junyi's hierarchy")
-    p.add_argument("--min-support", type=int, default=30, help="students who started both concepts, in different windows")
+    p.add_argument(
+        "--content", type=Path, default=None, help="Info_Content.csv, to check edges against Junyi's hierarchy"
+    )
+    p.add_argument(
+        "--min-support", type=int, default=30, help="students who started both concepts, in different windows"
+    )
     p.add_argument("--min-precedence", type=float, default=0.9, help="share of them who started the prerequisite first")
-    p.add_argument("--min-proximity", type=float, default=0.2, help="share who started the dependent concept soon after")
+    p.add_argument(
+        "--min-proximity", type=float, default=0.2, help="share who started the dependent concept soon after"
+    )
     p.add_argument("--proximity-window", type=int, default=5, help="'soon' = within this many new concepts")
     p.set_defaults(func=cmd_prereq)
 
@@ -362,12 +380,20 @@ def main(argv: list[str] | None = None) -> None:
 
     p = sub.add_parser("export", help="bundle a trained model, its simulators and sample students for the app")
     p.add_argument("--data", type=Path, required=True, help="processed data directory")
-    p.add_argument("--runs", type=Path, required=True, help="runs directory with bkt/, prereq/, dkt/ and the checkpoint")
+    p.add_argument(
+        "--runs", type=Path, required=True, help="runs directory with bkt/, prereq/, dkt/ and the checkpoint"
+    )
     p.add_argument("--out", type=Path, required=True, help="bundle directory (replaced if it exists)")
     p.add_argument("--checkpoint", default="pointer-seed0", help="run directory under --runs holding model.pt")
-    p.add_argument("--names", type=Path, default=Path(__file__).resolve().parents[1] / "resources" / "junyi_concepts_en.csv",
-                   help="CSV with ucid, name_en and level columns")
-    p.add_argument("--content", type=Path, default=None, help="Junyi Info_Content.csv, for learning stage and difficulty")
+    p.add_argument(
+        "--names",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "resources" / "junyi_concepts_en.csv",
+        help="CSV with ucid, name_en and level columns",
+    )
+    p.add_argument(
+        "--content", type=Path, default=None, help="Junyi Info_Content.csv, for learning stage and difficulty"
+    )
     p.add_argument("--split", choices=("val", "test"), default="test")
     p.add_argument("--max-students", type=int, default=300)
     p.add_argument("--seed", type=int, default=0)

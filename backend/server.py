@@ -33,7 +33,9 @@ class SimulateRequest(BaseModel):
 
 
 class TutorRequest(BaseModel):
-    kind: str = Field("why", pattern="^(why|concept)$", description="'why' explains the path, 'concept' teaches one concept")
+    kind: str = Field(
+        "why", pattern="^(why|concept)$", description="'why' explains the path, 'concept' teaches one concept"
+    )
     concept_id: int | None = None
     api_key: str | None = Field(None, description="optional Gemini key; overrides GEMINI_API_KEY for this request")
 
@@ -66,9 +68,13 @@ def why_template(demo: Demo, example: int) -> str:
             reason += f", and it comes after its prerequisite {covered[0]} earlier in the path"
         if missing:
             reason += f", though its inferred prerequisite {missing[0]} isn't done yet"
-        lines.append(f"{step + 1}. {cand['name']}: the model gave it {prob:.0%} of its attention at this step; {reason}.")
+        lines.append(
+            f"{step + 1}. {cand['name']}: the model gave it {prob:.0%} of its attention at this step; {reason}."
+        )
     markov = ", ".join(c["name"] for c in ex["paths"]["markov"]["concepts"])
-    lines.append(f"For comparison, the Markov baseline, which only looks at the last few concepts, would pick: {markov}.")
+    lines.append(
+        f"For comparison, the Markov baseline, which only looks at the last few concepts, would pick: {markov}."
+    )
     return "\n".join(lines)
 
 
@@ -97,13 +103,12 @@ def tutor_prompt(demo: Demo, example: int, req: TutorRequest) -> str:
         return (
             "You are a tutor explaining an AI system's recommendation to a student and their teacher. "
             "Using only the facts below, explain in at most 4 short sentences why this 3-concept path suits the "
-            "student now, and how it differs from the baseline. Don't invent numbers.\n\n"
-            + demo.tutor_context(example)
+            "student now, and how it differs from the baseline. Don't invent numbers.\n\n" + demo.tutor_context(example)
         )
     c = demo.concepts[req.concept_id]
     parents = ", ".join(demo.concepts[p]["name"] for p in demo.parents[req.concept_id]) or "none recorded"
     return (
-        f"You are a friendly math tutor. Explain the exercise topic \"{c['name']}\" "
+        f'You are a friendly math tutor. Explain the exercise topic "{c["name"]}" '
         f"({c.get('stage') or 'school'} level) in 3 short paragraphs for a student about to practise it, with one "
         f"worked example. Topics students usually learn first: {parents}."
     )

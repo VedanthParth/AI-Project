@@ -94,6 +94,17 @@ class Examples:
     def __len__(self) -> int:
         return len(self.student)
 
+    @classmethod
+    def empty(cls, k: int, n: int) -> Examples:
+        return cls(
+            student=np.zeros(0, np.int32),
+            cut=np.zeros(0, np.int32),
+            targets=np.zeros((0, k), np.int32),
+            candidates=np.zeros((0, n), np.int32),
+            target_slots=np.zeros((0, k), np.int64),
+            first_group=np.zeros(0, np.int8),
+        )
+
 
 @dataclass
 class Processed:
@@ -313,14 +324,7 @@ def build_examples(
             rows_group.append(int(np.sum(window[j : j + k] == window[j])))
 
     if not rows_student:
-        return Examples(
-            student=np.zeros(0, np.int32),
-            cut=np.zeros(0, np.int32),
-            targets=np.zeros((0, k), np.int32),
-            candidates=np.zeros((0, n), np.int32),
-            target_slots=np.zeros((0, k), np.int64),
-            first_group=np.zeros(0, np.int8),
-        )
+        return Examples.empty(k, n)
     return Examples(
         student=np.asarray(rows_student, np.int32),
         cut=np.asarray(rows_cut, np.int32),
@@ -339,8 +343,7 @@ def prepare(log_path: str | Path, out_dir: str | Path, cfg: DataConfig) -> Proce
     splits = split_students(inter.num_students, cfg.split, cfg.seed)
     popularity = concept_popularity(inter, splits["train"])
     examples = {
-        name: build_examples(inter, splits[name], popularity, cfg, seed=cfg.seed + i)
-        for i, name in enumerate(SPLITS)
+        name: build_examples(inter, splits[name], popularity, cfg, seed=cfg.seed + i) for i, name in enumerate(SPLITS)
     }
     stats = {
         "students": inter.num_students,

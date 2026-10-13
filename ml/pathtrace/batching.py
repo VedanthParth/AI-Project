@@ -22,7 +22,7 @@ class Batch:
     first_group: torch.Tensor  # (B,) long, leading targets tied for the first step
     index: np.ndarray  # (B,) example indices into the split
 
-    def to(self, device: torch.device) -> "Batch":
+    def to(self, device: torch.device) -> Batch:
         return Batch(
             hist_concepts=self.hist_concepts.to(device),
             hist_correct=self.hist_correct.to(device),

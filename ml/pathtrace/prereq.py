@@ -61,11 +61,9 @@ class PrereqGraph:
         )
 
     @classmethod
-    def load(cls, path: str | Path) -> "PrereqGraph":
+    def load(cls, path: str | Path) -> PrereqGraph:
         with np.load(path) as z:
-            return cls(
-                z["src"], z["dst"], z["support"], z["precedence"], z["proximity"], int(z["num_concepts"])
-            )
+            return cls(z["src"], z["dst"], z["support"], z["precedence"], z["proximity"], int(z["num_concepts"]))
 
 
 # --------------------------------------------------------------------------- inference
@@ -221,9 +219,7 @@ def compare_with_content(graph: PrereqGraph, concept_names: np.ndarray, content:
 # --------------------------------------------------------------------------- constraints
 
 
-def example_constraints(
-    inter: Interactions, ex: Examples, graph: PrereqGraph
-) -> tuple[np.ndarray, np.ndarray]:
+def example_constraints(inter: Interactions, ex: Examples, graph: PrereqGraph) -> tuple[np.ndarray, np.ndarray]:
     """Per-example prerequisite tables over the candidate slots.
 
     ``always[e, i]``: candidate i has an unmet prerequisite that is neither

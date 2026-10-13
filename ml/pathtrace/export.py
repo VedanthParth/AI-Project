@@ -41,7 +41,7 @@ DATASET = {
 
 README = """# PathTrace app bundle
 
-Exported by `pathtrace export` from `{data}` and `{runs}` on {date}. See `meta.json` for
+Exported by `pathtrace export` from {source} on {date}. See `meta.json` for
 the exact runs and their test metrics.
 
 The student histories in `data/` are {students} test-split students from the
@@ -49,17 +49,6 @@ The student histories in `data/` are {students} test-split students from the
 from it and shared under the same license. Concept names are machine-translated
 (see `ml/resources/README.md`).
 """
-
-
-def _empty_examples(k: int, n: int) -> Examples:
-    return Examples(
-        student=np.zeros(0, np.int32),
-        cut=np.zeros(0, np.int32),
-        targets=np.zeros((0, k), np.int32),
-        candidates=np.zeros((0, n), np.int32),
-        target_slots=np.zeros((0, k), np.int64),
-        first_group=np.zeros(0, np.int8),
-    )
 
 
 def subset_students(proc: Processed, split: str, students: np.ndarray) -> Processed:
@@ -82,7 +71,7 @@ def subset_students(proc: Processed, split: str, students: np.ndarray) -> Proces
     fields = {f.name: getattr(ex, f.name)[keep] for f in dataclasses.fields(Examples)}
     fields["student"] = new_id[ex.student[keep]].astype(np.int32)
     k, n = ex.targets.shape[1], ex.candidates.shape[1]
-    examples = {name: _empty_examples(k, n) for name in SPLITS}
+    examples = {name: Examples.empty(k, n) for name in SPLITS}
     examples[split] = Examples(**fields)
     splits = {name: np.zeros(0, np.int64) for name in SPLITS}
     splits[split] = np.arange(len(students), dtype=np.int64)
@@ -90,7 +79,9 @@ def subset_students(proc: Processed, split: str, students: np.ndarray) -> Proces
     return Processed(sub_inter, splits, examples, proc.popularity, proc.data_cfg, stats)
 
 
-def concept_table(concept_names: np.ndarray, popularity: np.ndarray, names_csv: Path, content_csv: Path | None) -> list[dict]:
+def concept_table(
+    concept_names: np.ndarray, popularity: np.ndarray, names_csv: Path, content_csv: Path | None
+) -> list[dict]:
     """Display metadata for concept ids 1..C: English name, level, stage, difficulty, popularity."""
     ucids = concept_names[1:]
     names = pd.read_csv(names_csv).set_index("ucid").reindex(ucids)
@@ -150,7 +141,9 @@ def export_bundle(
         shutil.copyfile(src, out / dst)
     src, dst, counts = transition_counts(proc)
     np.savez_compressed(out / "markov.npz", src=src, dst=dst, counts=counts)
-    concepts = concept_table(proc.inter.concept_names, proc.popularity, Path(names_csv), content_csv and Path(content_csv))
+    concepts = concept_table(
+        proc.inter.concept_names, proc.popularity, Path(names_csv), content_csv and Path(content_csv)
+    )
     save_json(concepts, out / "concepts.json")
 
     model_metrics = load_json(runs / checkpoint / "metrics.json")
@@ -175,8 +168,9 @@ def export_bundle(
         "dkt_auc": dkt_summary.get("test", {}).get("auc"),
     }
     save_json(meta, out / "meta.json")
+    source = f"`{data.name}`" if data.name == runs.name else f"`{data.name}` and `{runs.name}`"
     (out / "README.md").write_text(
-        README.format(data=data.name, runs=runs.name, date=date, students=len(chosen), **DATASET), encoding="utf-8"
+        README.format(source=source, date=date, students=len(chosen), **DATASET), encoding="utf-8"
     )
     size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     log(f"exported {len(chosen)} students, {meta['examples']} examples to {out} ({size / 1e6:.1f} MB)")

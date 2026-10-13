@@ -66,21 +66,20 @@ class DKT(nn.Module):
     def _inputs(self, concepts: torch.Tensor, correct: torch.Tensor) -> torch.Tensor:
         return self.embed(2 * concepts + correct.long())
 
-    def sequence_logits(self, concepts: torch.Tensor, correct: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
-        """Logits for every concept after each step, shape (B, T, C + 1)."""
-        packed = pack_padded_sequence(
+    def _packed(self, concepts: torch.Tensor, correct: torch.Tensor, lengths: torch.Tensor):
+        return pack_padded_sequence(
             self._inputs(concepts, correct), lengths.cpu(), batch_first=True, enforce_sorted=False
         )
-        out, _ = self.lstm(packed)
+
+    def sequence_logits(self, concepts: torch.Tensor, correct: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        """Logits for every concept after each step, shape (B, T, C + 1)."""
+        out, _ = self.lstm(self._packed(concepts, correct, lengths))
         out, _ = pad_packed_sequence(out, batch_first=True, total_length=concepts.size(1))
         return self.out(self.dropout(out))
 
     def encode(self, concepts: torch.Tensor, correct: torch.Tensor, lengths: torch.Tensor):
         """LSTM state after each history, ((1, B, H), (1, B, H))."""
-        packed = pack_padded_sequence(
-            self._inputs(concepts, correct), lengths.cpu(), batch_first=True, enforce_sorted=False
-        )
-        _, state = self.lstm(packed)
+        _, state = self.lstm(self._packed(concepts, correct, lengths))
         return state
 
     def step(self, concepts: torch.Tensor, correct: torch.Tensor, state):
@@ -135,7 +134,9 @@ def evaluate_dkt(model: DKT, inter: Interactions, students: np.ndarray, cfg: DKT
     starts, lengths = _chunks(inter, students, cfg.chunk_len)
     scores, labels = [], []
     for i in range(0, len(starts), cfg.batch_size):
-        logit, label = _next_step_outputs(model, *_chunk_batch(inter, starts[i : i + cfg.batch_size], lengths[i : i + cfg.batch_size], device))
+        logit, label = _next_step_outputs(
+            model, *_chunk_batch(inter, starts[i : i + cfg.batch_size], lengths[i : i + cfg.batch_size], device)
+        )
         scores.append(logit.cpu().numpy())
         labels.append(label.cpu().numpy())
     scores, labels = np.concatenate(scores), np.concatenate(labels)
@@ -246,15 +247,15 @@ def learning_gain(
             mean_after = model.probs(state).gather(1, cands_rep).mean(dim=1)
             after[name][idx] = mean_after.view(len(idx), rollouts).mean(dim=1).cpu().numpy()
     headroom = np.maximum(1.0 - before, 1e-6)
-    return {
-        name: {"before": before, "after": after[name], "gain": (after[name] - before) / headroom} for name in paths
-    }
+    return {name: {"before": before, "after": after[name], "gain": (after[name] - before) / headroom} for name in paths}
 
 
 # --------------------------------------------------------------------------- command
 
 
-def collect_paths(proc: Processed, split: str, runs: list[Path], bkt_params: Path | None = None) -> dict[str, np.ndarray]:
+def collect_paths(
+    proc: Processed, split: str, runs: list[Path], bkt_params: Path | None = None
+) -> dict[str, np.ndarray]:
     """Paths to score: random, the students' own next concepts, saved predictions, and the BKT oracle."""
     from pathtrace import bkt
 

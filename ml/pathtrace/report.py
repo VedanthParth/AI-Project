@@ -24,10 +24,10 @@ from pathlib import Path
 import numpy as np
 
 from pathtrace import metrics
+from pathtrace.baselines import BASELINES
 from pathtrace.preprocess import Processed, load_processed
 from pathtrace.utils import load_json, save_json
 
-BASELINES = ("random", "popularity", "markov", "gru_next_item")
 LABELS = {
     "random": "Random",
     "popularity": "Popularity",
@@ -44,9 +44,15 @@ LABELS = {
     "bkt_oracle": "BKT oracle",
 }
 ORDER = list(LABELS)
-METRIC_COLUMNS = [("precision", "P@3"), ("hit_rate", "HR@3"), ("ndcg", "NDCG@3"), ("mrr", "MRR"), ("first_step", "First step")]
+METRIC_COLUMNS = [
+    ("precision", "P@3"),
+    ("hit_rate", "HR@3"),
+    ("ndcg", "NDCG@3"),
+    ("mrr", "MRR"),
+    ("first_step", "First step"),
+]
 
-# Validated light palette (dataviz reference instance); ours vs baselines by emphasis.
+# Light palette matching the app: our methods in blue, baselines and references in grey.
 INK, INK_2, MUTED, GRID, AXIS = "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
 SERIES_1, SERIES_2 = "#2a78d6", "#eb6834"
 
@@ -194,7 +200,12 @@ def _table_rows(result: dict) -> tuple[list[str], list[list[str]]]:
         body.append(
             [label, str(row["seeds"])]
             + [_fmt(row.get(key)) for key, _ in METRIC_COLUMNS]
-            + [_fmt(row.get("reward_share"), percent=True), _fmt(row.get("violations"), 2), _fmt(row.get("dkt_gain"), 4), vs_text]
+            + [
+                _fmt(row.get("reward_share"), percent=True),
+                _fmt(row.get("violations"), 2),
+                _fmt(row.get("dkt_gain"), 4),
+                vs_text,
+            ]
         )
     return header, body
 
@@ -215,8 +226,13 @@ def _write_tables(result: dict, out: Path) -> None:
 
     def tex(cell: str) -> str:
         return (
-            cell.replace("\\", "\\textbackslash{}").replace("%", "\\%").replace("_", "\\_").replace("±", "$\\pm$")
-            .replace("Δ", "$\\Delta$").replace("–", "--").replace("—", "--")
+            cell.replace("\\", "\\textbackslash{}")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+            .replace("±", "$\\pm$")
+            .replace("Δ", "$\\Delta$")
+            .replace("–", "--")
+            .replace("—", "--")
         )
 
     lines = [
@@ -299,8 +315,16 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
                 value = baselines[name]["val"]["metrics"]["ndcg"]["mean"]
                 right.axhline(value, color=MUTED, linewidth=1, linestyle="--")
                 # labelled at the left, where the training curve is still far below the line
-                right.annotate(LABELS[name], (0, value), xycoords=("axes fraction", "data"), xytext=(4, 3),
-                               textcoords="offset points", ha="left", fontsize=8, color=INK_2)
+                right.annotate(
+                    LABELS[name],
+                    (0, value),
+                    xycoords=("axes fraction", "data"),
+                    xytext=(4, 3),
+                    textcoords="offset points",
+                    ha="left",
+                    fontsize=8,
+                    color=INK_2,
+                )
         right.set(title="Validation NDCG@3", xlabel="Epoch")
         for ax in (left, right):
             _style(ax, integer_x=True)
@@ -309,7 +333,9 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
         fig.savefig(out / "fig_training.png")
         plt.close(fig)
 
-    rl_runs = [d for d in sorted(runs.glob("rl-seed*")) if (d / "history.json").exists() and (d / "metrics.json").exists()]
+    rl_runs = [
+        d for d in sorted(runs.glob("rl-seed*")) if (d / "history.json").exists() and (d / "metrics.json").exists()
+    ]
     if rl_runs:
         fig, (left, right) = plt.subplots(1, 2, figsize=(9, 3.4))
         shares, ndcgs = [], []
@@ -317,7 +343,10 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
             history, start = load_json(d / "history.json"), load_json(d / "metrics.json")["start"]
             shares.append([start["share_of_oracle"]] + [r["val_share_of_oracle"] for r in history[1:]])
             ndcgs.append([r["val_ndcg"] for r in history])
-        for ax, series, title in ((left, shares, "Validation BKT reward (share of oracle)"), (right, ndcgs, "Validation NDCG@3")):
+        for ax, series, title in (
+            (left, shares, "Validation BKT reward (share of oracle)"),
+            (right, ndcgs, "Validation NDCG@3"),
+        ):
             length = min(len(s) for s in series)
             values = np.array([s[:length] for s in series])
             epochs = np.arange(length)
@@ -335,7 +364,9 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
     names = [n for n in result["rows"] if n in ndcg and n != "random"]
     if names:
         has_gain = any("dkt_gain" in result["rows"][n] for n in names)
-        fig, axes = plt.subplots(1, 2 if has_gain else 1, figsize=(9 if has_gain else 5, 0.42 * len(names) + 1.2), sharey=True)
+        fig, axes = plt.subplots(
+            1, 2 if has_gain else 1, figsize=(9 if has_gain else 5, 0.42 * len(names) + 1.2), sharey=True
+        )
         axes = np.atleast_1d(axes)
         ypos = np.arange(len(names))[::-1]
         for y, name in zip(ypos, names):
@@ -343,8 +374,16 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
             color = MUTED if name in BASELINES or name in ("students", "bkt_oracle") else SERIES_1
             ci = row.get("ndcg_ci", {})
             if ci:
-                axes[0].errorbar(ci["mean"], y, xerr=[[ci["mean"] - ci["ci_low"]], [ci["ci_high"] - ci["mean"]]],
-                                 fmt="o", color=color, markersize=6, capsize=0, linewidth=1.5)
+                axes[0].errorbar(
+                    ci["mean"],
+                    y,
+                    xerr=[[ci["mean"] - ci["ci_low"]], [ci["ci_high"] - ci["mean"]]],
+                    fmt="o",
+                    color=color,
+                    markersize=6,
+                    capsize=0,
+                    linewidth=1.5,
+                )
             if has_gain and "dkt_gain" in row:
                 axes[1].plot(row["dkt_gain"][0], y, "o", color=color, markersize=6)
         axes[0].set_yticks(ypos, [result["rows"][n]["label"].strip() for n in names])
@@ -354,9 +393,7 @@ def _figures(proc: Processed, runs: Path, result: dict, ndcg: dict[str, np.ndarr
             axes[1].axvline(0, color=AXIS, linewidth=1)
         for ax in axes:
             _style(ax)
-        fig.suptitle(
-            "Blue: pointer-network variants. Grey: baselines and references.", fontsize=9, color=INK_2, y=1.0
-        )
+        fig.suptitle("Blue: pointer-network variants. Grey: baselines and references.", fontsize=9, color=INK_2, y=1.0)
         fig.savefig(out / "fig_methods.png")
         plt.close(fig)
     log(f"wrote figures to {out}")

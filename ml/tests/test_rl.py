@@ -71,7 +71,9 @@ def test_positive_advantage_raises_the_sampled_paths_probability(tiny_processed,
     actions = sample.actions
 
     def path_log_prob():
-        out = model.decode(model.encode_student(batch), model.encode_candidates(batch.candidates), 3, "teacher", actions)
+        out = model.decode(
+            model.encode_student(batch), model.encode_candidates(batch.candidates), 3, "teacher", actions
+        )
         return out.log_probs.sum(dim=1)
 
     before = path_log_prob().detach()

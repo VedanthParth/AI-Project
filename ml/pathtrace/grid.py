@@ -24,10 +24,15 @@ import dataclasses
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from pathtrace.baselines import BASELINES, run_baselines
+from pathtrace.bkt import BKTParams, fit_and_report
 from pathtrace.config import ModelConfig, TrainConfig
-from pathtrace.dkt import DKTConfig
+from pathtrace.dkt import DKTConfig, collect_paths, gain_report, load_dkt, train_dkt
 from pathtrace.preprocess import load_processed
-from pathtrace.utils import load_json, save_json
+from pathtrace.prereq import PrereqGraph, infer_and_report
+from pathtrace.rl import RLConfig, finetune
+from pathtrace.train import train_model
+from pathtrace.utils import get_device, load_json, save_json
 
 VARIANTS: dict[str, dict] = {
     "pointer": {},
@@ -39,7 +44,6 @@ SENSITIVITY: dict[str, dict] = {
     "rl-sup1": {"sup_weight": 1.0},
     "rl-ema": {"baseline": "ema"},
 }
-BASELINE_NAMES = ("random", "popularity", "markov", "gru_next_item")
 
 
 def run_grid(
@@ -59,14 +63,6 @@ def run_grid(
     gain_max_examples: int | None = 20_000,
     log: Callable[[str], None] = print,
 ) -> None:
-    from pathtrace.baselines import run_baselines
-    from pathtrace.bkt import BKTParams, fit_and_report
-    from pathtrace.dkt import collect_paths, gain_report, load_dkt, train_dkt
-    from pathtrace.prereq import PrereqGraph, infer_and_report
-    from pathtrace.rl import RLConfig, finetune
-    from pathtrace.train import train_model
-    from pathtrace.utils import get_device
-
     model_cfg = model_cfg or ModelConfig()
     train_cfg = train_cfg or TrainConfig()
     unknown = set(variants) - set(VARIANTS)
@@ -96,7 +92,7 @@ def run_grid(
     # Baselines, one at a time so an interruption loses at most one.
     baselines_file = runs / "baselines" / "baselines.json"
     done = load_json(baselines_file).get("baselines", {}) if baselines_file.exists() else {}
-    for name in BASELINE_NAMES:
+    for name in BASELINES:
         if name in done:
             log(f"[skip] baseline {name}: already done")
             continue
@@ -131,7 +127,11 @@ def run_grid(
                 log(f"[skip] {out.name}: needs {checkpoint}")
                 continue
             cfg = dataclasses.replace(base_rl, seed=seed, **overrides)
-            step(out.name, out / "metrics.json", lambda o=out, c=cfg, ck=checkpoint: finetune(proc, ck, params, graph, c, o, log=log))
+            step(
+                out.name,
+                out / "metrics.json",
+                lambda o=out, c=cfg, ck=checkpoint: finetune(proc, ck, params, graph, c, o, log=log),
+            )
 
     # DKT learning gain of every method found under runs_dir (recomputed each time).
     if gain:

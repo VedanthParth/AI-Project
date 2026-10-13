@@ -28,22 +28,64 @@ def test_synth_prepare_baselines_train_evaluate(tmp_path):
     assert (tmp_path / "prereq" / "prereq_graph.npz").exists()
     main(["dkt", "--data", str(data), "--out", str(tmp_path / "dkt"), "--max-epochs", "1", "--hidden-dim", "16"])
     gain = tmp_path / "gain.json"
-    main([
-        "gain", "--data", str(data), "--dkt", str(tmp_path / "dkt" / "dkt.pt"), "--runs", str(tmp_path / "baselines"),
-        str(tmp_path / "run"), "--bkt", str(tmp_path / "bkt" / "bkt_params.npz"), "--rollouts", "2", "--out", str(gain),
-    ])
+    main(
+        [
+            "gain",
+            "--data",
+            str(data),
+            "--dkt",
+            str(tmp_path / "dkt" / "dkt.pt"),
+            "--runs",
+            str(tmp_path / "baselines"),
+            str(tmp_path / "run"),
+            "--bkt",
+            str(tmp_path / "bkt" / "bkt_params.npz"),
+            "--rollouts",
+            "2",
+            "--out",
+            str(gain),
+        ]
+    )
     methods = json.loads(gain.read_text(encoding="utf-8"))["methods"]
     assert {"random", "students", "popularity", "run", "bkt_oracle"} <= set(methods)
-    main([
-        "finetune", "--data", str(data), "--checkpoint", str(tmp_path / "run" / "model.pt"),
-        "--bkt", str(tmp_path / "bkt" / "bkt_params.npz"), "--prereq", str(tmp_path / "prereq" / "prereq_graph.npz"),
-        "--out", str(tmp_path / "rl"), "--max-epochs", "1", "--bootstrap", "20", "--max-history", "30",
-    ])
+    main(
+        [
+            "finetune",
+            "--data",
+            str(data),
+            "--checkpoint",
+            str(tmp_path / "run" / "model.pt"),
+            "--bkt",
+            str(tmp_path / "bkt" / "bkt_params.npz"),
+            "--prereq",
+            str(tmp_path / "prereq" / "prereq_graph.npz"),
+            "--out",
+            str(tmp_path / "rl"),
+            "--max-epochs",
+            "1",
+            "--bootstrap",
+            "20",
+            "--max-history",
+            "30",
+        ]
+    )
     assert json.loads((tmp_path / "rl" / "metrics.json").read_text(encoding="utf-8"))["splits"]["test"]["n"] > 0
     summary = json.loads((tmp_path / "bkt" / "bkt_summary.json").read_text(encoding="utf-8"))
     assert summary["fit"]["concepts_fitted"] > 0
     assert (tmp_path / "bkt" / "bkt_params.npz").exists()
 
     out = tmp_path / "eval.json"
-    main(["evaluate", "--data", str(data), "--checkpoint", str(tmp_path / "run" / "model.pt"), "--bootstrap", "20", "--out", str(out)])
+    main(
+        [
+            "evaluate",
+            "--data",
+            str(data),
+            "--checkpoint",
+            str(tmp_path / "run" / "model.pt"),
+            "--bootstrap",
+            "20",
+            "--out",
+            str(out),
+        ]
+    )
     assert json.loads(out.read_text(encoding="utf-8"))["n"] == result["splits"]["test"]["n"]
