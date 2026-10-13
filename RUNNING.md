@@ -1,7 +1,7 @@
 # How to run PathTrace
 
-Everything lives on the `pathtrace-rebuild` branch:
-https://github.com/VedanthParth/AI-Project/tree/pathtrace-rebuild
+Everything lives on the `Ve-changes` branch:
+https://github.com/VedanthParth/AI-Project/tree/Ve-changes
 
 | What | Where it runs | Time |
 | --- | --- | --- |
@@ -13,11 +13,11 @@ https://github.com/VedanthParth/AI-Project/tree/pathtrace-rebuild
 ## 0. Get the code
 
 ```bash
-git clone --branch pathtrace-rebuild https://github.com/VedanthParth/AI-Project.git
+git clone --branch Ve-changes https://github.com/VedanthParth/AI-Project.git
 cd AI-Project
 ```
 
-No git? Download the [branch as a zip](https://github.com/VedanthParth/AI-Project/archive/refs/heads/pathtrace-rebuild.zip)
+No git? Download the [branch as a zip](https://github.com/VedanthParth/AI-Project/archive/refs/heads/Ve-changes.zip)
 and unzip it.
 
 You need [Python 3.10 or newer](https://www.python.org/downloads/) (3.12 recommended) and
@@ -33,7 +33,7 @@ The app serves the trained model on 300 held-out Junyi students. Everything it n
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ml -r backend/requirements.txt
+pip install -e 'ml[dev]' -r backend/requirements.txt
 cd frontend && npm ci && npm run build && cd ..
 python backend/server.py
 ```
@@ -43,7 +43,7 @@ python backend/server.py
 ```powershell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -e ml -r backend/requirements.txt
+pip install -e 'ml[dev]' -r backend/requirements.txt
 cd frontend; npm ci; npm run build; cd ..
 python backend/server.py
 ```
@@ -66,11 +66,11 @@ Then open **http://localhost:8000**. Stop the server with Ctrl+C. Next time, onl
 ## 2. Run the full experiments on Colab
 
 1. Open the notebook in Colab:
-   **[pathtrace_colab.ipynb](https://colab.research.google.com/github/VedanthParth/AI-Project/blob/pathtrace-rebuild/ml/notebooks/pathtrace_colab.ipynb)**
-   - The notebook is only on the `pathtrace-rebuild` branch, at `ml/notebooks/pathtrace_colab.ipynb`,
+   **[pathtrace_colab.ipynb](https://colab.research.google.com/github/VedanthParth/AI-Project/blob/Ve-changes/ml/notebooks/pathtrace_colab.ipynb)**
+   - The notebook is only on the `Ve-changes` branch, at `ml/notebooks/pathtrace_colab.ipynb`,
      so it doesn't show up on GitHub's default `master` view.
    - If the link doesn't open: in Colab, use **File → Open notebook → GitHub**, enter
-     `VedanthParth/AI-Project`, choose the `pathtrace-rebuild` branch, and pick
+     `VedanthParth/AI-Project`, choose the `Ve-changes` branch, and pick
      `ml/notebooks/pathtrace_colab.ipynb`. Or use **File → Upload notebook** with
      `ml\notebooks\pathtrace_colab.ipynb` from your clone.
 2. **Runtime → Change runtime type → T4 GPU** (or any GPU), then **Save**.
@@ -88,9 +88,10 @@ What each section does:
 
 - **If Colab disconnects** (free sessions time out and stop when idle), reconnect and
   **Run all** again. Every finished step is skipped, so it continues where it stopped.
-- **Short on GPU time?** In the cell that sets `SEEDS`, use `SEEDS = '0 1 2'`, and skip the two
-  cells marked *Optional*. Each training run prints its seconds per epoch, so the first run
-  tells you how long the rest will take.
+- **GPU time.** The notebook runs three seeds (`SEEDS = '0 1 2'`) to fit a free Colab session; use
+  `SEEDS = '0 1 2 3 4'` for the paper's five if time allows, and skip the two cells marked *Optional*
+  if it doesn't. Each training run prints its seconds per epoch, so the first run tells you how
+  long the rest will take.
 - **Results** are in Drive under `MyDrive/pathtrace/results/junyi/`:
   - `main_table.md`, `main_table.csv` and `main_table.tex`: mean ± std over seeds, with the
     paired bootstrap comparison against the strongest baseline;
@@ -118,9 +119,8 @@ python -m pathtrace train --data demo/processed --out demo/runs/pointer-seed0 --
 `train` prints the loss and validation NDCG@3 every epoch, then val and test tables. Delete the
 `demo/` folder afterwards.
 
-Tests, with the virtual environment active: `python -m pip install pytest` once, then
-`python -m pytest` in `ml/` (68 tests, about 30 s) and `python -m pytest backend/tests` from the
-repository root (6 tests).
+Tests and lint, with the virtual environment active: `python -m pytest` in `ml/` (68 tests, about
+30 s), `python -m pytest backend/tests` from the repository root (6 tests), and `ruff check ml backend`.
 
 To run on the real data instead, follow [`ml/README.md`](ml/README.md): it downloads the
 dataset and lists every command. Training on a CPU is slow (about 3 minutes per epoch on a

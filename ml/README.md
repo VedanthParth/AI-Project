@@ -8,11 +8,13 @@ Every number reported in the paper should come from these commands.
 
 ## Setup
 
+From the repository root, in the virtual environment [RUNNING.md](../RUNNING.md) sets up:
+
 ```bash
+pip install -e 'ml[dev]'
 cd ml
-python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 68 tests, about 30 s
+python -m pytest                    # 68 tests, about 30 s
+ruff check . && ruff format --check .
 ```
 
 Training on the full dataset needs a GPU. On a 4-core CPU the pointer network takes about

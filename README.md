@@ -21,7 +21,7 @@ Needs Python 3.10+ and Node 20.19+. From the repository root:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
-pip install -e ml -r backend/requirements.txt
+pip install -e 'ml[dev]' -r backend/requirements.txt
 (cd frontend && npm ci && npm run build)
 
 python backend/server.py               # open http://localhost:8000
@@ -34,7 +34,8 @@ students, 3.2 MB) and serves the built frontend. Nothing else needs downloading.
   `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY`, or paste a key in the app.
 - **Frontend development.** Run `npm run dev` in `frontend/` alongside the server; Vite
   proxies `/api` to port 8000.
-- **Tests.** `python -m pip install pytest`, then `python -m pytest backend/tests` and `python -m pytest ml`.
+- **Tests and lint.** `python -m pytest backend/tests`, `python -m pytest ml`, and `ruff check ml backend`
+  (`ruff format ml backend` reformats; settings are in `ruff.toml`).
 
 To serve a different model, export a new bundle with `python -m pathtrace export` (see
 [`ml/README.md`](ml/README.md)) and point `PATHTRACE_BUNDLE` at it.
