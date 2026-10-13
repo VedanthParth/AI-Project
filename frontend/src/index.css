@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Design tokens. Series colours are the dataviz skill's validated categorical slots
-   (blue, orange, aqua, yellow), stepped separately for the dark surface. */
+/* Design tokens. Series colours are four categorical slots (blue, orange, aqua, yellow),
+   stepped separately for the dark surface. The dark set follows the system preference. */
 :root {
   color-scheme: light;
   --bg: #f4f4f1;
@@ -26,7 +26,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
+  :root {
     color-scheme: dark;
     --bg: #121211;
     --surface: #1a1a19;
@@ -48,29 +48,6 @@
     --bad: #e66767;
     --heat: 57, 135, 229;
   }
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #121211;
-  --surface: #1a1a19;
-  --surface-2: #232321;
-  --border: #34342f;
-  --ink: #ffffff;
-  --ink-2: #c3c2b7;
-  --muted: #9a998f;
-  --grid: #34342f;
-  --axis: #52514e;
-  --accent: #3987e5;
-  --accent-soft: #1b2a3d;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --reference: #c3c2b7;
-  --good: #2fbf2f;
-  --bad: #e66767;
-  --heat: 57, 135, 229;
 }
 
 body {
@@ -104,10 +81,6 @@ body {
 
 .muted {
   color: var(--muted);
-}
-
-.ink-2 {
-  color: var(--ink-2);
 }
 
 .chip {
@@ -273,10 +246,6 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   white-space: nowrap;
   z-index: 10;
-}
-
-.react-flow__attribution {
-  display: none;
 }
 
 .react-flow__handle {

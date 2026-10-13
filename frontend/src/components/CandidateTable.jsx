@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { METHOD_COLOR, pct } from '../api';
+import { METHODS, METHOD_COLOR, pct } from '../api';
 
 const SHORT = { pointer: 'Pointer', markov: 'Markov', popularity: 'Popular', bkt_gain: 'BKT' };
 const RANK = ['1st', '2nd', '3rd'];
@@ -35,7 +35,7 @@ export default function CandidateTable({ example }) {
   });
   const rows = showAll ? order : order.slice(0, 10);
   const pickedBy = (slot) =>
-    ['pointer', 'markov', 'popularity', 'bkt_gain'].filter((m) => example.paths[m].slots.includes(slot));
+    METHODS.filter((m) => example.paths[m].slots.includes(slot));
 
   return (
     <section className="card flex flex-col gap-3" aria-label="Candidates and attention">

@@ -28,7 +28,9 @@ export const api = {
   tutor: (id, body) => request(`/api/examples/${id}/tutor`, { method: 'POST', body: JSON.stringify(body) }),
 };
 
-export const METHOD_ORDER = ['pointer', 'markov', 'popularity', 'bkt_gain', 'actual'];
+// The recommenders the demo compares, plus "actual" (what the student did next) as a reference.
+export const METHODS = ['pointer', 'markov', 'popularity', 'bkt_gain'];
+export const METHOD_ORDER = [...METHODS, 'actual'];
 
 // Categorical slots in fixed order; "actual" is a reference line, not a series colour.
 export const METHOD_COLOR = {
