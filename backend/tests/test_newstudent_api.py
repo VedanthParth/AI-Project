@@ -61,3 +61,31 @@ def test_plan_rejects_bad_answers(topics_client):
 
 def test_results_come_from_the_bundle(topics_client):
     assert topics_client.get("/api/results").json() == {"catalogue_test_20": {"methods": {}}}
+
+
+def test_info_says_whether_the_tutor_uses_gemini(topics_client, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    assert topics_client.get("/api/info").json()["tutor"] == "template"
+    monkeypatch.setenv("GEMINI_API_KEY", "secret-test-key")
+    response = topics_client.get("/api/info")
+    assert response.json()["tutor"] == "gemini" and "secret-test-key" not in response.text
+
+
+def test_plan_explanations_with_and_without_gemini(topics_client, monkeypatch):
+    import server
+
+    q = topics_client.get("/api/questionnaire").json()
+    body = {"stage": "junior", "units": {"0": "bad"}, "current": [q["units"][0]["exercises"][1]["id"]]}
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    plain = topics_client.post("/api/plan/explain", json=body).json()
+    assert plain["source"] == "template" and plain["text"].startswith("1. ")
+
+    seen = {}
+    monkeypatch.setattr(server, "ask_gemini", lambda key, prompt: seen.update(key=key, prompt=prompt) or "explained")
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    out = topics_client.post("/api/plan/explain", json={**body, "style": "rl"}).json()
+    assert out == {"source": "gemini", "model": server.GEMINI_MODEL, "text": "explained"}
+    assert "'you'" in seen["prompt"] and "Never use a name" in seen["prompt"] and "Markov" not in seen["prompt"]
+    topic = topics_client.post("/api/plan/explain", json={**body, "kind": "concept", "concept_id": 1}).json()
+    assert topic["text"] == "explained" and "worked example" in seen["prompt"]
+    assert topics_client.post("/api/plan/explain", json={**body, "kind": "concept", "concept_id": 99999}).status_code == 422

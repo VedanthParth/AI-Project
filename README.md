@@ -11,7 +11,7 @@ only by a short questionnaire.
 | --- | --- |
 | [`ml/`](ml/README.md) | The `learnpath` package: data pipeline, model, baselines, simulators, RL fine-tuning, experiment grid, evaluations and paper tables |
 | [`backend/`](backend/server.py) | FastAPI service that serves the trained models |
-| [`frontend/`](frontend/) | React app: a new student's path built step by step from a questionnaire, held-out students with what they really did, and the results |
+| [`frontend/`](frontend/) | React app for students and parents: plan your next topics from three questions, see it on real held-out students, and how it works, with spider and line charts explaining every suggestion |
 
 **[RUNNING.md](RUNNING.md)** has step-by-step instructions for everything: the app on Windows,
 macOS or Linux, the Colab experiments, and the ML code in a terminal.
@@ -34,7 +34,7 @@ test students and the evaluation results, 5 MB) and serves the built frontend. N
 needs downloading.
 
 - **Tutor.** It works without a key, answering from a template. For Gemini answers, copy
-  `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY`, or paste a key in the app.
+  `backend/.env.example` to `backend/.env`, set `GEMINI_API_KEY` and restart the server.
 - **Frontend development.** Run `npm run dev` in `frontend/` alongside the server; Vite
   proxies `/api` to port 8000.
 - **Tests.** `python -m pip install pytest`, then `python -m pytest backend/tests` and `python -m pytest ml`.

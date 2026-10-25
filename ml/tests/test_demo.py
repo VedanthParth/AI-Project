@@ -145,3 +145,19 @@ def test_students_and_neighbourhood(bundle):
     assert set(demo.ex.candidates[0].tolist()) <= ids
     assert all(edge["source"] in ids and edge["target"] in ids for edge in graph["edges"])
     assert demo.example(0)["paths"]["pointer"]["concepts"][0]["name"] in demo.tutor_context(0)
+
+
+def test_example_explains_each_path_in_plain_words(bundle):
+    _, _, _, demo = bundle
+    ex = demo.example(0)
+    for name in ("pointer", "markov", "popularity", "actual"):
+        profile = ex["paths"][name]["profile"]
+        assert set(profile) == {"ready", "room", "recent", "level", "gain", "matched"}
+        assert all(0 <= v <= 1 for v in profile.values())
+        for item in ex["paths"][name]["concepts"]:
+            assert all(0 <= item["factors"][k] <= 1 for k in ("ready", "room", "recent", "level", "gain"))
+            assert item["reason"] and " you " not in f" {item['reason']} "
+    assert ex["paths"]["actual"]["profile"]["matched"] == 1.0
+    assert ex["areas"] is None  # this bundle has no topics.json
+    context = demo.tutor_context(0)
+    assert not any(term in context for term in ("Markov", "BKT", "pointer network", "probability"))

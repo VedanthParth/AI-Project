@@ -12,7 +12,7 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 93 tests, about 1 minute
+.venv/bin/python -m pytest          # 97 tests, about 1 minute
 ```
 
 Training on the full dataset needs a GPU. On a 4-core CPU the pointer network takes about
@@ -85,7 +85,7 @@ python -m learnpath export --data data/processed/junyi --runs runs/junyi --check
 
 The committed `backend/bundle` was exported from the full-data runs (`learnpath all --seeds 0 1 2`)
 with `pointer-seed0`, its RL policy `rl-seed0`, the realistic-distractor model
-`pointer-hard50-seed0` for the New student page, and every evaluation JSON for the Results page
+`pointer-hard50-seed0` for the *Plan my next topics* page, and every evaluation JSON
 (see *Testing on genuinely unseen data* below for the export flags).
 
 `python -m learnpath <command> --help` lists every option with its default. When running
@@ -145,8 +145,7 @@ python -m learnpath walkforward-report --data data/processed/junyi-wf/fold-2019-
 ```
 
 `export --results results/junyi --shortlist-model runs/junyi-hard50/pointer-hard50-seed0/model.pt`
-adds the report and every evaluation JSON above to the app bundle (its Results page), the
-realistic-distractor model (used on the New student page), and, when `rl-seed0` exists, the RL
+adds the report and every evaluation JSON above to the app bundle, the realistic-distractor model (used on the *Plan my next topics* page), and, when `rl-seed0` exists, the RL
 policy. With `--content` it also writes `topics.json`, the strand and unit names from
 `resources/junyi_topics_en.csv` that the questionnaire asks about.
 

@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from learnpath import bkt, metrics, prereq
+from learnpath import bkt, explain, metrics, prereq
 from learnpath.baselines import MarkovBaseline
 from learnpath.batching import make_batch
 from learnpath.dkt import load_dkt
@@ -75,6 +75,15 @@ class Demo:
         self.mastery = bkt.candidate_mastery(self.inter, self.ex, self.params)
         self.scores["bkt_gain"] = bkt.expected_gain(self.mastery, self.ex.candidates, self.params)
         self.always, self.need = prereq.example_constraints(self.inter, self.ex, self.graph)
+        # Areas of maths (Junyi's strands) for the strengths chart, when the bundle has topics.json.
+        n = self.inter.num_concepts + 1
+        self.topics_json = load_json(root / "topics.json") if (root / "topics.json").exists() else None
+        self.concept_unit = np.full(n, -1, dtype=np.int64)
+        self.concept_area = np.full(n, -1, dtype=np.int64)
+        for unit in (self.topics_json or {}).get("units", []):
+            self.concept_unit[unit["concepts"]] = unit["id"]
+            self.concept_area[unit["concepts"]] = unit["strand"]
+        self.position = np.array([self.concepts.get(c, {}).get("position", 0.5) for c in range(n)])
         self.by_student = [np.flatnonzero(self.ex.student == s) for s in range(self.inter.num_students)]
         self.by_student = [idx[np.argsort(self.ex.cut[idx], kind="stable")] for idx in self.by_student]
 
@@ -82,7 +91,11 @@ class Demo:
 
     def _concept(self, cid: int) -> dict:
         c = self.concepts[int(cid)]
-        return {"id": c["id"], "name": c["name"], "stage": c.get("stage", ""), "level": c.get("level", "")}
+        unit = int(self.concept_unit[int(cid)]) if self.topics_json else -1
+        return {
+            "id": c["id"], "name": c["name"], "stage": c.get("stage", ""), "level": c.get("level", ""),
+            "unit": self.topics_json["units"][unit]["name"] if unit >= 0 else "",
+        }
 
     def _check_student(self, student: int) -> None:
         if not 0 <= student < self.inter.num_students:
@@ -195,17 +208,55 @@ class Demo:
                 }
             )
 
+        # Concept-indexed views of this moment's numbers, for the plain-language explanations.
+        size = self.inter.num_concepts + 1
+        known = np.zeros(size)
+        known[cands] = self.mastery[e]
+        for c, m in mastery_now.items():
+            known[c] = m
+        markov_scores = np.zeros(size)
+        markov_scores[cands] = self.scores["markov"][e]
+        recent = explain.scaled(markov_scores, cands)
+        level = explain.syllabus_level(self.position, distinct[: len(seen)].tolist())
+        raw_gain = np.zeros(size)
+        raw_gain[cands] = self.scores["bkt_gain"][e]
+        gain = explain.ranked(raw_gain, cands)
+        best_gain = max(float(self.scores["bkt_gain"][e, np.asarray(s)].sum()) for k, s in paths.items() if k != "bkt_gain")
+
         def describe(name: str, slots: np.ndarray) -> dict:
             slots = np.asarray(slots)
+            ids = [int(cands[s]) for s in slots]
+            hits = int(np.isin(slots, targets).sum())
+            items = []
+            for step, (slot, c) in enumerate(zip(slots.tolist(), ids)):
+                earlier = ids[:step]
+                sure = float(step_probs[step, slot]) if name == "pointer" else None
+                items.append(
+                    {
+                        **self._concept(c),
+                        "factors": explain.topic_factors(
+                            c, done=seen | set(earlier), parents=self.parents, mastery=known, recent=recent,
+                            level=level, gain=gain, sure=sure,
+                        ),
+                        "reason": explain.topic_reason(
+                            c, history=seen, earlier=earlier, parents=self.parents, mastery=known, recent=recent,
+                            name=lambda q: self.concepts[q]["name"], person="they",
+                        ),
+                    }
+                )
             return {
                 "name": name,
                 "label": METHOD_LABELS[name],
                 "slots": slots.tolist(),
-                "concepts": [self._concept(cands[s]) for s in slots],
-                "hits": int(np.isin(slots, targets).sum()),
+                "concepts": items,
+                "hits": hits,
                 "first_step": bool(slots[0] in targets[:first_group]),
                 "violations": int(prereq.path_violations(slots[None], self.always[e : e + 1], self.need[e : e + 1])[0]),
                 "bkt_reward": round(float(self.scores["bkt_gain"][e, slots].sum()), 4),
+                "profile": explain.path_profile(
+                    ids, history=seen, parents=self.parents, mastery=known, recent=recent, level=level,
+                    expected_gain=raw_gain, best_gain=best_gain, matched=hits / self.k,
+                ),
             }
 
         recent_ids = list(dict.fromkeys(reversed(concepts[:cut].tolist())))[:12]
@@ -232,6 +283,25 @@ class Demo:
             "paths": {name: describe(name, slots) for name, slots in paths.items()},
             "pointer_steps": [[round(float(p), 4) for p in row] for row in step_probs],
             "first_group": first_group,
+            "areas": self._areas(student, cut),
+        }
+
+    def _areas(self, student: int, cut: int) -> dict | None:
+        """Estimated understanding per area of maths at ``cut`` and at the student's first moment."""
+        if self.topics_json is None:
+            return None
+        concepts, _ = self.inter.sequence(student)
+        stages = [self.concepts[int(c)].get("stage", "") for c in np.unique(concepts[:cut])]
+        stage = max(("elementary", "junior"), key=stages.count)
+        areas = [s for s in self.topics_json["strands"] if s["stage"] == stage]
+        first_cut = int(self.ex.cut[self.by_student[student][0]])
+        return {
+            "stage": stage,
+            **{
+                name: explain.area_strengths(self._mastery_at(student, at)[0], self.concept_area, areas, self.params.p_init)
+                for name, at in (("now", cut), ("start", first_cut))
+            },
+            "start_date": _date(self.inter.times(student)[first_cut]),
         }
 
     @torch.no_grad()
@@ -312,22 +382,16 @@ class Demo:
         """Plain-text facts about the example for the tutor prompt (no student identifiers)."""
         ex = self.example(example)
         lines = [
-            f"Student history before this point: {ex['history']['attempts']} attempts on "
-            f"{ex['history']['concepts']} concepts, {ex['history']['accuracy']:.0%} correct.",
-            "Recently practised (BKT mastery): "
+            f"So far the student has answered {ex['history']['attempts']} questions on {ex['history']['concepts']} "
+            f"topics and got {ex['history']['accuracy']:.0%} right.",
+            "Topics practised most recently, with how well the student probably understands each: "
             + "; ".join(f"{r['name']} ({r['mastery']:.0%})" for r in ex["history"]["recent"][:6]),
-            f"The pointer network chose this path from {len(ex['candidates'])} candidate concepts, with the "
-            "probability it gave each pick at its step:",
+            f"Out of {len(ex['candidates'])} possible next topics, the recommender chose these three, in order:",
         ]
-        for step, slot in enumerate(ex["paths"]["pointer"]["slots"]):
-            cand = ex["candidates"][slot]
-            prereqs = ", ".join(p["name"] for p in cand["unmet_prereqs"]) or "none"
-            lines.append(
-                f"  {step + 1}. {cand['name']}: probability {ex['pointer_steps'][step][slot]:.0%}, "
-                f"BKT mastery {cand['mastery']:.0%}, expected BKT gain {cand['bkt_gain']:.3f}, "
-                f"unmet inferred prerequisites: {prereqs}"
-            )
-        for name in ("markov", "popularity"):
-            path = ex["paths"][name]
-            lines.append(f"{path['label']} baseline would pick: " + ", ".join(c["name"] for c in path["concepts"]))
+        for step, item in enumerate(ex["paths"]["pointer"]["concepts"]):
+            lines.append(f"  {step + 1}. {item['name']}: {item['reason']}")
+        usual = ", ".join(c["name"] for c in ex["paths"]["markov"]["concepts"])
+        common = ", ".join(c["name"] for c in ex["paths"]["popularity"]["concepts"])
+        lines.append(f"What most students did after the same recent topics: {usual}.")
+        lines.append(f"The topics practised by the most students: {common}.")
         return "\n".join(lines)

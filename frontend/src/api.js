@@ -28,14 +28,12 @@ export const api = {
   tutor: (id, body) => request(`/api/examples/${id}/tutor`, { method: 'POST', body: JSON.stringify(body) }),
   questionnaire: () => request('/api/questionnaire'),
   plan: (body) => request('/api/plan', { method: 'POST', body: JSON.stringify(body) }),
+  explain: (body) => request('/api/plan/explain', { method: 'POST', body: JSON.stringify(body) }),
   results: () => request('/api/results'),
 };
 
-// New student page: the three ways of choosing a path.
-export const PLAN_ORDER = ['pointer', 'rl', 'markov'];
+// Series colours for the plan and comparison charts (the dataviz skill's first three validated slots).
 export const PLAN_COLOR = { pointer: 'var(--series-1)', rl: 'var(--series-3)', markov: 'var(--series-2)' };
-
-export const METHOD_ORDER = ['pointer', 'markov', 'popularity', 'bkt_gain', 'actual'];
 
 // Categorical slots in fixed order; "actual" is a reference line, not a series colour.
 export const METHOD_COLOR = {

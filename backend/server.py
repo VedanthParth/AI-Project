@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 
@@ -49,6 +50,12 @@ class PlanRequest(BaseModel):
     practice: list[PracticeItem] = Field(default_factory=list, description="attempts recorded in the app, in order")
 
 
+class PlanExplainRequest(PlanRequest):
+    kind: str = Field("why", pattern="^(why|concept)$", description="'why' explains the plan, 'concept' teaches one topic")
+    concept_id: int | None = None
+    style: str = Field("pointer", pattern="^(pointer|rl)$", description="which recommendation the page shows")
+
+
 class TutorRequest(BaseModel):
     kind: str = Field("why", pattern="^(why|concept)$", description="'why' explains the path, 'concept' teaches one concept")
     concept_id: int | None = None
@@ -67,25 +74,17 @@ def load_env_file(path: Path) -> None:
 
 # --------------------------------------------------------------------------- tutor
 
+STYLE = (
+    "Write in Indian English, in plain words a student and their parents understand, and only in English: no "
+    "Hindi or other words, greetings or nicknames. Never use a name, a placeholder such as [Name], or 'he' or 'she'. Don't mention models, algorithms, probabilities or any other "
+    "technical term, and don't invent numbers or facts that aren't given."
+)
 
-def why_template(demo: Demo, example: int) -> str:
-    ex = demo.example(example)
-    pointer = ex["paths"]["pointer"]
-    lines = []
-    for step, slot in enumerate(pointer["slots"]):
-        cand = ex["candidates"][slot]
-        prob = ex["pointer_steps"][step][slot]
-        earlier = {ex["candidates"][s]["id"] for s in pointer["slots"][:step]}
-        reason = f"BKT puts the student's mastery at {cand['mastery']:.0%}"
-        covered = [p["name"] for p in cand["unmet_prereqs"] if p["id"] in earlier]
-        missing = [p["name"] for p in cand["unmet_prereqs"] if p["id"] not in earlier]
-        if covered:
-            reason += f", and it comes after its prerequisite {covered[0]} earlier in the path"
-        if missing:
-            reason += f", though its inferred prerequisite {missing[0]} isn't done yet"
-        lines.append(f"{step + 1}. {cand['name']}: the model gave it {prob:.0%} of its attention at this step; {reason}.")
-    markov = ", ".join(c["name"] for c in ex["paths"]["markov"]["concepts"])
-    lines.append(f"For comparison, the Markov baseline, which only looks at the last few concepts, would pick: {markov}.")
+
+def plan_template(items: list[dict], usual: list[dict]) -> str:
+    """The tutor's answer without Gemini: each topic with the reason the app already shows."""
+    lines = [f"{step + 1}. {item['name']}: {item['reason']}" for step, item in enumerate(items)]
+    lines.append("Most students who had done the same recent topics went on to: " + ", ".join(c["name"] for c in usual) + ".")
     return "\n".join(lines)
 
 
@@ -99,7 +98,7 @@ def concept_template(demo: Demo, concept_id: int) -> str:
         text += " Students usually practise it after: " + ", ".join(parents[:5]) + "."
     if children:
         text += " It usually leads on to: " + ", ".join(children[:5]) + "."
-    return text + " Add a Gemini API key for a full explanation."
+    return text + " A fuller explanation with a worked example appears when the tutor is connected to Gemini."
 
 
 def ask_gemini(api_key: str, prompt: str) -> str:
@@ -109,23 +108,39 @@ def ask_gemini(api_key: str, prompt: str) -> str:
     return client.models.generate_content(model=GEMINI_MODEL, contents=prompt).text
 
 
-def tutor_prompt(demo: Demo, example: int, req: TutorRequest) -> str:
-    if req.kind == "why":
-        return (
-            "You are a maths teacher in an Indian school explaining an AI system's recommendation to a student and "
-            "their parents. Using only the facts below, explain in at most 4 short sentences why this 3-topic path "
-            "suits the student now, and how it differs from the baseline. Don't invent numbers. Write in Indian "
-            "English.\n\n"
-            + demo.tutor_context(example)
-        )
-    c = demo.concepts[req.concept_id]
-    parents = ", ".join(demo.concepts[p]["name"] for p in demo.parents[req.concept_id]) or "none recorded"
+def why_prompt(facts: str, about: str) -> str:
+    """``about`` is "you" for a student reading their own plan, "this student" for an example student."""
+    audience = (
+        "Talk to the student as 'you'."
+        if about == "you"
+        else "You are describing an example student to a parent: call them 'this student'."
+    )
+    return (
+        "You are a friendly maths teacher in an Indian school. Using only the facts below, explain in 3 or 4 short "
+        f"sentences why these three topics, in this order, suit the student now. {audience} {STYLE}\n\n{facts}"
+    )
+
+
+def topic_prompt(demo: Demo, concept_id: int) -> str:
+    c = demo.concepts[concept_id]
+    parents = ", ".join(demo.concepts[p]["name"] for p in demo.parents[concept_id]) or "none recorded"
     return (
         f"You are a friendly maths teacher in an Indian school. Explain the topic \"{c['name']}\" "
         f"({CLASSES.get(c.get('stage'), 'school level')}) in 3 short paragraphs for a student about to practise it, "
         "with one worked example set in an everyday Indian context, such as rupees at a shop, a cricket score or a "
-        f"train journey. Use Indian English spelling and metric units. Topics students usually learn first: {parents}."
+        f"train journey. Talk to the student as 'you' and use metric units. {STYLE} "
+        f"Topics students usually learn first: {parents}."
     )
+
+
+def answer(key: str | None, prompt: Callable[[], str], template: Callable[[], str]) -> dict:
+    """Gemini's answer when a key is set, otherwise the template; ``source`` says which."""
+    if not key:
+        return {"source": "template", "text": template()}
+    try:
+        return {"source": "gemini", "model": GEMINI_MODEL, "text": ask_gemini(key, prompt())}
+    except Exception as err:  # the SDK raises several error types; report them all the same way
+        raise HTTPException(status_code=502, detail=f"Gemini request failed: {err}") from err
 
 
 # --------------------------------------------------------------------------- app
@@ -155,7 +170,8 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
 
     @app.get("/api/info")
     def info() -> dict:
-        return demo.info()
+        # Whether the tutor answers with Gemini (a key in backend/.env) or from templates; never the key itself.
+        return {**demo.info(), "tutor": "gemini" if os.environ.get("GEMINI_API_KEY") else "template"}
 
     @app.get("/api/students")
     def list_students() -> list[dict]:
@@ -202,17 +218,35 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
 
     @app.post("/api/examples/{example_id}/tutor")
     def tutor(example_id: int, req: TutorRequest) -> dict:
-        guard(example, example_id)
+        ex = guard(example, example_id)
         if req.kind == "concept" and req.concept_id not in demo.concepts:
             raise HTTPException(status_code=422, detail="concept_id must be a known concept for kind 'concept'")
         key = req.api_key or os.environ.get("GEMINI_API_KEY")
-        if not key:
-            text = why_template(demo, example_id) if req.kind == "why" else concept_template(demo, req.concept_id)
-            return {"source": "template", "text": text}
-        try:
-            return {"source": GEMINI_MODEL, "text": ask_gemini(key, tutor_prompt(demo, example_id, req))}
-        except Exception as err:  # the SDK raises several error types; report them all the same way
-            raise HTTPException(status_code=502, detail=f"Gemini request failed: {err}") from err
+        if req.kind == "concept":
+            return answer(key, lambda: topic_prompt(demo, req.concept_id), lambda: concept_template(demo, req.concept_id))
+        return answer(
+            key,
+            lambda: why_prompt(demo.tutor_context(example_id), "this student"),
+            lambda: plan_template(ex["paths"]["pointer"]["concepts"], ex["paths"]["markov"]["concepts"]),
+        )
+
+    @app.post("/api/plan/explain")
+    def explain_plan(req: PlanExplainRequest) -> dict:
+        if planner is None:
+            raise HTTPException(status_code=404, detail="this bundle has no topics.json; re-export it with --content")
+        if req.kind == "concept" and req.concept_id not in demo.concepts:
+            raise HTTPException(status_code=422, detail="concept_id must be a known concept for kind 'concept'")
+        key = os.environ.get("GEMINI_API_KEY")
+        if req.kind == "concept":
+            return answer(key, lambda: topic_prompt(demo, req.concept_id), lambda: concept_template(demo, req.concept_id))
+        practice = [(p.concept, p.correct) for p in req.practice]
+        plan = guard(planner.plan, req.stage, req.strands, req.units, req.current, practice)
+        style = req.style if req.style in plan["paths"] else "pointer"
+        return answer(
+            key,
+            lambda: why_prompt(planner.facts(plan, style), "you"),
+            lambda: plan_template(plan["paths"][style]["concepts"], plan["paths"]["markov"]["concepts"]),
+        )
 
     if frontend_dir and Path(frontend_dir).is_dir():
         app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

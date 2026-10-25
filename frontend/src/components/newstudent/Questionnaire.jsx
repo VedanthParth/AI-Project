@@ -86,24 +86,21 @@ export default function Questionnaire({ questionnaire, answers, onChange, onExam
   const set = (patch) => onChange({ ...answers, ...patch });
 
   return (
-    <section className="card flex flex-col gap-4" aria-label="New student questionnaire">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="card-title">1. Tell us about the student</h2>
-          <p className="card-sub">Three short questions. The path updates after every answer.</p>
-        </div>
-        <button type="button" className="btn shrink-0" onClick={onExample}><Sparkles size={14} aria-hidden /> Example</button>
+    <div className="card card-lg flex flex-col gap-6" aria-label="Questionnaire">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="m-0 ink-2">Your plan updates after every answer.</p>
+        <button type="button" className="btn shrink-0" onClick={onExample}><Sparkles size={14} aria-hidden /> Try an example student</button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">Class</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-medium">1. Which class are you in?</span>
         <Segmented options={questionnaire.stages} value={stage} labels={STAGE_LABEL} size="md"
           onChange={(v) => v && onChange({ stage: v, strands: {}, units: {}, current: [], practice: [] })} />
       </div>
 
       <div>
-        <div className="text-sm font-medium">How is the student doing in each area of maths?</div>
-        <p className="muted text-xs m-0 mb-2">Strong marks all its chapters as known. Average or weak opens a checklist of its chapters.</p>
+        <div className="font-medium">2. How are you doing in each area of maths?</div>
+        <p className="muted text-sm m-0 mb-3">Choose Strong if you know it well. Average or Weak opens a list of its chapters, so you can say which ones you are confident in and which need help.</p>
         <ul className="m-0 p-0 list-none flex flex-col gap-2">
           {stageStrands.map((s) => (
             <li key={s.id} className="rounded-lg p-2" style={{ border: '1px solid var(--border)' }}>
@@ -130,14 +127,13 @@ export default function Questionnaire({ questionnaire, answers, onChange, onExam
       </div>
 
       <div>
-        <div className="text-sm font-medium">Which exercises did the student finish last?</div>
-        <p className="muted text-xs m-0 mb-2">
-          Up to {questionnaire.max_current}, oldest first. This is the most useful answer: on held-out students, naming the
-          last exercise recovers about half of what a full year of history gives; rating chapters alone recovers very little.
+        <div className="font-medium">3. Which exercises did you finish last?</div>
+        <p className="muted text-sm m-0 mb-3">
+          Pick up to {questionnaire.max_current}, oldest first. This helps the most: it tells us exactly where you are in a chapter.
         </p>
         <LastFinished units={stageUnits} current={current} names={names} max={questionnaire.max_current}
           onChange={(c) => set({ current: c })} />
       </div>
-    </section>
+    </div>
   );
 }

@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from learnpath import bkt
+from learnpath import bkt, explain
 from learnpath.batching import Batch
 from learnpath.demo import ATTEMPTS, ROLLOUTS, Demo, DemoError
 from learnpath.onboarding import BAD, GOOD, Topics, checklist_history
@@ -147,40 +147,87 @@ class NewStudentPlanner:
             source[c] = "practised here"
 
         mastery = self._mastery(concepts, correct)
+        answered = len(concepts) - len(practice)  # attempts built from the answers, before any practice
+        before = self._mastery(concepts[:answered], correct[:answered]) if practice else mastery
         eligible = (self.stage == stage) & ~np.isin(np.arange(len(self.stage)), concepts)
         eligible[0] = False
+        options = np.flatnonzero(eligible)
         scores = self.markov(_started(concepts))
         scores[~eligible] = -np.inf
-        n = min(self.shortlist_size, int(eligible.sum()))
+        n = min(self.shortlist_size, len(options))
         shortlist = np.argsort(-scores, kind="stable")[:n]
-        gain = (1 - mastery[shortlist]) * self.demo.params.p_learn[shortlist]
+        expected_gain = (1 - mastery) * self.demo.params.p_learn
+        recent = explain.scaled(np.where(eligible, scores, 0.0), options)
+        level = explain.syllabus_level(self.position, _started(concepts))
+        gain = explain.ranked(expected_gain, options)
         seen = set(concepts.tolist())
 
-        paths = {"markov": {"slots": list(range(demo.k)), "steps": None, "model": "first-attempt transitions"}}
-        for name, (model, max_history, label) in self.models.items():
+        # Four ways of choosing three topics: the two models order the shortlist; the usual next
+        # step is the shortlist's top three; the most common topics ignore the student entirely.
+        ids = {
+            "markov": shortlist[: demo.k].tolist(),
+            "popularity": options[np.argsort(-demo.proc.popularity[options], kind="stable")[: demo.k]].tolist(),
+        }
+        steps = {}
+        for key, (model, max_history, _) in self.models.items():
             out = model.recommend(_batch(concepts, correct, shortlist, demo.k, max_history, demo.device), demo.k)
-            paths[name] = {
-                "slots": out.actions[0].tolist(),
-                "steps": [[round(float(p), 4) for p in row] for row in out.probs[0].cpu().numpy()],
-                "model": label,
-            }
-        described = {}
-        for name, p in paths.items():
-            slots = p["slots"]
-            items = []
-            for step, slot in enumerate(slots):
-                c = int(shortlist[slot])
-                earlier = {int(shortlist[s]) for s in slots[:step]}
-                unmet = [q for q in demo.parents[c] if q not in seen and q not in earlier]
-                items.append({**self._concept(c), "slot": slot, "unmet_prereqs": [self._concept(q) for q in unmet]})
-            described[name] = {
-                **p,
-                "label": {"pointer": "Pointer network", "rl": "RL-tuned policy", "markov": "Markov"}[name],
+            ids[key] = shortlist[out.actions[0].cpu().numpy()].tolist()
+            steps[key] = out.probs[0].cpu().numpy()
+        simulation = self._simulate(concepts, correct, shortlist, ids)
+        best_progress = max(max(s["gain"], 0.0) for s in simulation["paths"].values()) or 1.0
+        best_gain = max(float(expected_gain[path].sum()) for path in ids.values())
+        slot_of = {int(c): i for i, c in enumerate(shortlist.tolist())}
+
+        paths = {}
+        for key, path in ids.items():
+            items, mentioned = [], set()  # name a "needs help" chapter on its first topic only
+            for step, c in enumerate(path):
+                earlier = path[:step]
+                topic = self._concept(c)
+                weak = marks.get(int(self.topics.concept_unit[c])) == BAD and topic["unit"] not in mentioned
+                mentioned.add(topic["unit"])
+                items.append(
+                    {
+                        **topic,
+                        "slot": slot_of.get(c),
+                        "mastery": round(float(mastery[c]), 3),
+                        "unmet_prereqs": [self._concept(q) for q in explain.unmet(c, demo.parents, seen | set(earlier))],
+                        "factors": explain.topic_factors(
+                            c, done=seen | set(earlier), parents=demo.parents, mastery=mastery, recent=recent,
+                            level=level, gain=gain,
+                            sure=float(steps[key][step, slot_of[c]]) if key in steps else None,
+                        ),
+                        "reason": explain.topic_reason(
+                            c, history=seen, earlier=earlier, parents=demo.parents, mastery=mastery, recent=recent,
+                            name=lambda q: demo.concepts[q]["name"],
+                            needs_help=weak, chapter=topic["unit"],
+                        ),
+                    }
+                )
+            paths[key] = {
                 "concepts": items,
-                "bkt_gain": round(float(gain[slots].sum()), 4),
+                "steps": [[round(float(p), 4) for p in row] for row in steps[key]] if key in steps else None,
+                "model": self.models[key][2] if key in self.models else key,
                 "violations": sum(1 for it in items if it["unmet_prereqs"]),
+                "bkt_gain": round(float(expected_gain[path].sum()), 4),
+                "profile": explain.path_profile(
+                    path, history=seen, parents=demo.parents, mastery=mastery, recent=recent, level=level,
+                    expected_gain=expected_gain, best_gain=best_gain,
+                    progress=max(simulation["paths"][key]["gain"], 0.0) / best_progress,
+                ),
             }
 
+        # Estimated understanding of each topic practised in the app, after every attempt.
+        trace: dict[int, list[float]] = {}
+        replay = before.copy()
+        p = demo.params
+        for c, right in practice:
+            trace.setdefault(c, [float(replay[c])])
+            replay[c] = bkt.update(replay[c], right, float(p.p_learn[c]), float(p.p_guess[c]), float(p.p_slip[c]))
+            trace[c].append(float(replay[c]))
+
+        areas = [s for s in self.topics_json["strands"] if s["stage"] == stage]
+        answered_concepts = set(concepts[:answered].tolist())
         unit_summary = {}
         for c in seen:
             u = int(self.topics.concept_unit[c])
@@ -193,7 +240,7 @@ class NewStudentPlanner:
                 "stage_concepts": int((self.stage == stage).sum()),
                 "history_attempts": int(len(concepts)),
                 "history_concepts": int(len(seen)),
-                "eligible": int(eligible.sum()),
+                "eligible": int(len(options)),
                 "shortlist_size": int(n),
                 "models": {name: label for name, (_, _, label) in self.models.items()},
             },
@@ -206,13 +253,22 @@ class NewStudentPlanner:
                 {"id": u, "name": unit_names[u]["name"], "mark": marks.get(u, "inferred"), "mastery": round(float(np.mean(v)), 3)}
                 for u, v in sorted(unit_summary.items(), key=lambda kv: np.mean(kv[1]))
             ],
+            "areas": {
+                "before": explain.area_strengths(
+                    {c: float(before[c]) for c in answered_concepts}, demo.concept_area, areas, p.p_init
+                ),
+                "now": explain.area_strengths({c: float(mastery[c]) for c in seen}, demo.concept_area, areas, p.p_init),
+            },
+            "practice_trace": [
+                {**self._concept(c), "points": [round(v, 3) for v in points]} for c, points in trace.items()
+            ],
             "shortlist": [
                 {**self._concept(int(c)), "rank": i + 1, "markov": round(float(scores[c]), 5),
-                 "mastery": round(float(mastery[c]), 3), "bkt_gain": round(float(gain[i]), 4),
+                 "mastery": round(float(mastery[c]), 3), "bkt_gain": round(float(expected_gain[c]), 4),
                  "weak_unit": marks.get(int(self.topics.concept_unit[c])) == BAD}
                 for i, c in enumerate(shortlist.tolist())
             ],
-            "paths": described,
+            "paths": paths,
             # A rule, not a model: the models only recommend new concepts, so concepts already worked
             # on whose BKT mastery is still low are listed for review separately.
             "review": [
@@ -221,8 +277,29 @@ class NewStudentPlanner:
                 if mastery[c] < REVIEW_BELOW
             ][:5],
             "review_below": REVIEW_BELOW,
-            "simulation": self._simulate(concepts, correct, shortlist, {k: v["slots"] for k, v in described.items()}),
+            "simulation": simulation,
         }
+
+    def facts(self, plan: dict, style: str = "pointer") -> str:
+        """Plain-text facts about a plan for the tutor prompt (no names or other identifiers)."""
+        confident = [u["name"] for u in plan["units"] if u["mark"] == GOOD]
+        needs_help = [u["name"] for u in plan["units"] if u["mark"] == BAD]
+        last = [h["name"] for h in plan["history"] if h["source"] == "you finished this last"]
+        lines = []
+        if confident:
+            lines.append("Chapters the student is confident in: " + ", ".join(confident) + ".")
+        if needs_help:
+            lines.append("Chapters the student said need help: " + ", ".join(needs_help) + ".")
+        if last:
+            lines.append("Exercises the student finished most recently: " + ", ".join(last) + ".")
+        lines.append("The recommended next three topics, in order, each with the reason the app shows:")
+        for step, item in enumerate(plan["paths"][style]["concepts"]):
+            lines.append(f"  {step + 1}. {item['name']} ({item['unit']}): {item['reason']}")
+        usual = ", ".join(c["name"] for c in plan["paths"]["markov"]["concepts"])
+        lines.append(f"What most students did after the same recent topics: {usual}.")
+        if plan["review"]:
+            lines.append("Topics worth reviewing first: " + ", ".join(r["name"] for r in plan["review"][:3]) + ".")
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------ helpers
 
@@ -241,7 +318,7 @@ class NewStudentPlanner:
 
     @torch.no_grad()
     def _simulate(self, concepts, correct, shortlist, paths: dict[str, list[int]], rollouts: int = ROLLOUTS) -> dict:
-        """DKT rollout of each path, as on the Real students page: mean predicted success on the shortlist."""
+        """DKT rollout of each path (concept ids), as on the Real students page: mean predicted success on the shortlist."""
         dkt, device = self.demo.dkt, self.demo.device
         hist = torch.as_tensor(concepts[-200:], dtype=torch.long, device=device).unsqueeze(0)
         right = torch.as_tensor(correct[-200:], dtype=torch.long, device=device).unsqueeze(0)
@@ -250,12 +327,12 @@ class NewStudentPlanner:
         before = float(dkt.probs(encoded)[0][cands].mean())
         generator = torch.Generator(device=device)
         result = {}
-        for name, slots in paths.items():
+        for name, path in paths.items():
             generator.manual_seed(0)
             state = tuple(s.repeat_interleave(rollouts, dim=1) for s in encoded)
             curve = [before]
-            for slot in slots:
-                concept = cands[slot].repeat(rollouts)
+            for c in path:
+                concept = torch.full((rollouts,), int(c), dtype=torch.long, device=device)
                 for _ in range(ATTEMPTS):
                     p = dkt.probs(state).gather(1, concept.unsqueeze(1)).squeeze(1)
                     answers = (torch.rand(p.shape, generator=generator, device=device) < p).float()

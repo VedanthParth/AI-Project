@@ -53,7 +53,9 @@ def test_errors(client):
 
 def test_tutor_falls_back_to_a_template_without_a_key(client):
     why = client.post("/api/examples/0/tutor", json={"kind": "why"}).json()
-    assert why["source"] == "template" and "1." in why["text"] and "Markov" in why["text"]
+    assert why["source"] == "template" and "1." in why["text"]
+    assert "Most students who had done the same recent topics" in why["text"]
+    assert not any(term in why["text"] for term in ("Markov", "BKT", "pointer", "attention"))
     ex = client.get("/api/examples/0").json()
     concept = ex["candidates"][0]["id"]
     text = client.post("/api/examples/0/tutor", json={"kind": "concept", "concept_id": concept}).json()
@@ -70,7 +72,7 @@ def test_tutor_calls_gemini_with_the_model_facts(client, monkeypatch):
     monkeypatch.setattr(server, "ask_gemini", fake)
     out = client.post("/api/examples/0/tutor", json={"kind": "why", "api_key": "k"}).json()
     assert out["text"] == "explained" and seen["api_key"] == "k"
-    assert "pointer network chose this path" in seen["prompt"]
+    assert "the recommender chose these three" in seen["prompt"] and "Markov" not in seen["prompt"]
 
 
 def test_serves_the_built_frontend(bundle, tmp_path):

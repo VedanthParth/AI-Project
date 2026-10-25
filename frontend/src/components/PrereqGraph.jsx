@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Background, Controls, MarkerType, ReactFlow } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 import '@xyflow/react/dist/style.css';
-import { fmtNum, pct } from '../api';
+import { pct } from '../api';
 
 const NODE_W = 190;
 const NODE_H = 54;
@@ -49,7 +49,7 @@ function layout(graph, pathSlots, candidates) {
               {pick ? `${pick}. ` : ''}{n.name}
             </div>
             <div className="text-[10.5px] muted mt-0.5">
-              {n.seen ? `practised · mastery ${pct(n.mastery)}` : n.candidate ? 'candidate · not started' : 'prerequisite · not started'}
+              {n.seen ? `practised · understanding ${pct(n.mastery)}` : n.candidate ? 'not started yet' : 'building block · not started'}
             </div>
           </div>
         ),
@@ -94,7 +94,7 @@ function visible(graph, pathIds, mode) {
   };
 }
 
-export default function PrereqGraph({ example, graph, error, trainStudents }) {
+export default function PrereqGraph({ example, graph, error }) {
   const [mode, setMode] = useState('path');
   const pathSlots = example.paths.pointer.slots;
   const flow = useMemo(() => {
@@ -107,22 +107,14 @@ export default function PrereqGraph({ example, graph, error, trainStudents }) {
     : 0;
 
   return (
-    <section className="card flex flex-col gap-3" aria-label="Prerequisite map">
-      <div>
-        <h2 className="card-title">Prerequisite map</h2>
-        <p className="card-sub">
-          Arrows run from a topic to one that training students almost always started after it (inferred from{' '}
-          {trainStudents != null ? fmtNum(trainStudents) : 'the training'} students' first attempts). Blue outlines are the
-          recommended path; dashed boxes are prerequisites outside the candidate set.
-        </p>
-      </div>
+    <div className="card card-lg flex flex-col gap-3" aria-label="How topics connect">
       {error && <p className="bad m-0">Couldn't load the graph: {error}</p>}
       {!graph && !error && <div className="skeleton" style={{ height: 380 }} />}
       {flow && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-1" role="group" aria-label="Graph scope">
-              {[['path', 'Around the path'], ['all', 'All linked candidates']].map(([key, label]) => (
+              {[['path', 'Around the plan'], ['all', 'Everything nearby']].map(([key, label]) => (
                 <button key={key} type="button" className="btn text-xs" aria-pressed={mode === key} onClick={() => setMode(key)}
                   style={mode === key ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)' } : undefined}>
                   {label}
@@ -130,7 +122,7 @@ export default function PrereqGraph({ example, graph, error, trainStudents }) {
               ))}
             </div>
             <span className="muted text-xs num">
-              {linkedCandidates} of {example.candidates.length} candidates have inferred prerequisite links
+              {linkedCandidates} of the {example.candidates.length} options have known building blocks
             </span>
           </div>
           <div style={{ height: mode === 'all' ? 480 : 340, border: '1px solid var(--border)', borderRadius: 8 }}>
@@ -142,10 +134,10 @@ export default function PrereqGraph({ example, graph, error, trainStudents }) {
             </ReactFlow>
           </div>
           {!flow.edges.length && (
-            <p className="muted text-xs m-0">No inferred prerequisite links touch the recommended path here.</p>
+            <p className="muted text-xs m-0">None of the suggested topics has a known building block here.</p>
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }

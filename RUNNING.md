@@ -8,7 +8,7 @@ https://github.com/VedanthParth/AI-Project/tree/pathtrace-rebuild
 | [1. Demo app](#1-run-the-demo-app) | Your laptop | 10 min to install, then instant |
 | [2. Full experiments](#2-run-the-full-experiments-on-your-own-gpu) | Your laptop's GPU, or [Colab](#2b-or-run-them-on-colab) | Several hours; resumable |
 | [3. ML code in a terminal](#3-run-the-ml-code-locally) | Your laptop | About 1 minute on synthetic data |
-| [4. Live demo and screenshots](#4-live-demo-and-screenshot-checklist) | | |
+| [4. Live demo](#4-live-demo) | Your laptop | About 3 minutes |
 
 ## 0. Get the code
 
@@ -58,10 +58,11 @@ Then open **http://localhost:8000**. Stop the server with Ctrl+C. Next time, onl
   `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then try again.
 - **Tutor.** It answers from a template without a key. For Gemini answers, get a key from
   [Google AI Studio](https://aistudio.google.com/apikey), copy `backend/.env.example` to
-  `backend/.env` and set `GEMINI_API_KEY`, or paste the key under "Gemini API key" in the app.
+  `backend/.env`, set `GEMINI_API_KEY` and restart the server. The tutor shows *Connected to Gemini*
+  when the key is loaded.
 - **Links to a specific moment.** The address bar keeps the student and moment, so a view can
   be reopened later. With the committed bundle, a good one for the demo, with a rich
-  prerequisite map, is http://localhost:8000/?tab=students&student=43&moment=472.
+  prerequisite map, is http://localhost:8000/?tab=examples&student=43&moment=472.
 
 ## 2. Run the full experiments on your own GPU
 
@@ -164,55 +165,34 @@ python -m learnpath train --data demo/processed --out demo/runs/pointer-seed0 --
 `demo/` folder afterwards.
 
 Tests, with the virtual environment active: `python -m pip install pytest` once, then
-`python -m pytest` in `ml/` (93 tests, about 1 minute) and `python -m pytest backend/tests` from the
-repository root (10 tests).
+`python -m pytest` in `ml/` (97 tests, about 1 minute) and `python -m pytest backend/tests` from the
+repository root (12 tests).
 
 To run on the real data instead, follow [`ml/README.md`](ml/README.md): it downloads the
 dataset and lists every command. Training on a CPU is slow (about 3 minutes per epoch on a
 10,000-student subsample with 4 cores), which is why the full runs need a GPU (section 2).
 
-## 4. Live demo and screenshot checklist
+## 4. Live demo
 
-**Live demo, about 3 minutes** (http://localhost:8000):
+**About 3 minutes** (http://localhost:8000). The app is written for students and parents:
+plain words, charts instead of tables of numbers, and technical names only in the collapsed
+*For the technically curious* panels.
 
-1. **New student** tab, click **Example**: a Class 7–9 student who is average at Algebra,
-   confident in Linear Equations in One Variable, needs help with Quadratic Equations, and last
-   finished an early Quadratic Equations exercise.
-2. **How the path is chosen**: from all 1,326 exercises to the class group, to what is not done
-   yet, to the Markov shortlist, to the 3 the pointer network orders.
-3. **Recommended path**: each step's attention over the shortlist, and whether its inferred
-   prerequisites are covered. **Three ways to choose** puts it next to Markov and the RL-tuned
-   policy on the same shortlist.
-4. Click **Struggled** on step 1: the banner says how the path changed, and **Review first**
-   lists the exercise (a mastery rule, separate from the models).
-5. **Real students** tab: a held-out student, where what they really did next is known.
-6. **Results** tab: how well it works on unseen students, including the whole-catalogue,
-   questionnaire and walk-forward results, and where it does not beat Markov.
+1. **Plan my next topics**, click **Try an example student**: a Class 7–9 student who is average
+   at Algebra, confident in Linear Equations in One Variable, needs help with Quadratic Equations,
+   and last finished an early Quadratic Equations exercise.
+2. **Your next three topics**: each card says why the topic is there. Switch between *Like
+   students similar to you* and *Focus on learning more* (the RL-tuned version).
+3. **Why these three?**: the spider chart of five reasons, one topic at a time.
+4. **How your plan compares**: our plan against the usual next step and the most common topics.
+5. Press **Found it hard** on topic 1: the banner says how the plan changed, **Your strengths**
+   shows before and now, and **Worth reviewing first** lists the topic.
+6. **Ask the tutor** → **Explain your plan**: the chip says *Connected to Gemini* when
+   `backend/.env` has a key.
+7. **See it on real students**: a held-out student's year, what we suggested at one point, and what
+   they really did next (`?tab=examples&student=43&moment=472`).
 
-**Screenshots** (Real students tab unless noted):
-
-1. The whole page on one student (browser zoomed out to about 67%).
-2. **Recommended path**: the three steps with attention, mastery and outcome.
-3. **All 20 candidates and the model's attention**: click *Show all 20*.
-4. **Compare with the baselines** table.
-5. **Simulate following each path** chart, with the mouse over a point to show the tooltip.
-6. **Prerequisite map**, both *Around the path* and *All linked candidates*
-   (`?tab=students&student=43&moment=472` with the committed bundle).
-7. **Ask the tutor** after clicking *Why this path?*.
-8. **About this model** table at the bottom.
-9. **New student** tab after *Example*, then again after *Struggled* on step 1.
-10. **Results** tab.
-
-**Results** (`ml/results/junyi/` after section 2, or `MyDrive/learnpath/results/junyi/` on Colab):
-
-11. The main results table.
-12. `fig_methods.png`, `fig_training.png` and `fig_rl.png`.
-
-The same table and figures for the earlier 10,000-student subsample (one seed, trained on a
-CPU) are in [`ml/results/junyi-10k`](ml/results/junyi-10k), for
-comparison with the full-data results.
-
-**Terminal** (section 3 above):
-
-13. The `train` output, showing epochs and the val/test tables.
-14. `python -m pytest` passing.
+**Results** are in `ml/results/junyi/` after section 2 (`MyDrive/learnpath/results/junyi/` on
+Colab): the main results table, and `fig_methods.png`, `fig_training.png` and `fig_rl.png`. The
+same table and figures for the earlier 10,000-student subsample (one seed, trained on a CPU) are
+in [`ml/results/junyi-10k`](ml/results/junyi-10k), for comparison with the full-data results.

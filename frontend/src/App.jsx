@@ -1,171 +1,92 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Route } from 'lucide-react';
-import { api, fmtNum } from './api';
-import StudentList from './components/StudentList';
-import StudentHeader from './components/StudentHeader';
-import HistoryCard from './components/HistoryCard';
-import PathCard from './components/PathCard';
-import CandidateTable from './components/CandidateTable';
-import MethodComparison from './components/MethodComparison';
-import SimulationChart from './components/SimulationChart';
-import PrereqGraph from './components/PrereqGraph';
-import TutorPanel from './components/TutorPanel';
-import ModelCard from './components/ModelCard';
-import NewStudent from './pages/NewStudent';
-import Results from './pages/Results';
+import { api } from './api';
+import { APP } from './copy';
+import Plan from './pages/Plan';
+import Examples from './pages/Examples';
+import HowItWorks from './pages/HowItWorks';
 
-const TABS = [
-  ['new', 'New student', 'Answer a few questions; watch the path being built and change'],
-  ['students', 'Real students', 'Held-out Junyi students, with what they really did next'],
-  ['results', 'Results', 'How well it works on unseen students'],
+const PAGES = [
+  ['plan', 'Plan my next topics'],
+  ['examples', 'See it on real students'],
+  ['how', 'How it works'],
 ];
+// Older links used these names for the same pages.
+const OLD_NAMES = { new: 'plan', students: 'examples', results: 'how' };
 
-function readUrl() {
+function pageFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const num = (key) => (params.has(key) ? Number(params.get(key)) : null);
-  const tab = TABS.some(([id]) => id === params.get('tab')) ? params.get('tab') : null;
-  return { student: num('student'), example: num('moment'), tab: tab ?? (params.has('student') ? 'students' : 'new') };
+  const name = OLD_NAMES[params.get('tab')] ?? params.get('tab');
+  if (PAGES.some(([id]) => id === name)) return name;
+  return params.has('student') ? 'examples' : 'plan';
 }
 
 export default function App() {
+  const [page, setPage] = useState(pageFromUrl);
   const [info, setInfo] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [studentId, setStudentId] = useState(null);
-  const [detail, setDetail] = useState(null);
-  const [exampleId, setExampleId] = useState(null);
-  const [example, setExample] = useState(null);
-  const [simulation, setSimulation] = useState(null);
-  const [graph, setGraph] = useState(null);
-  const [errors, setErrors] = useState({});
-  const initial = useRef(readUrl());
-  const current = useRef(null);
-  const [tab, setTab] = useState(() => readUrl().tab);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.info().then(setInfo).catch((err) => setError(err.message));
+  }, []);
+
   useEffect(() => {
     // Keep the open page in the address bar, so a reload or a shared link opens the same page.
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
+    url.searchParams.set('tab', page);
     window.history.replaceState(null, '', url);
-  }, [tab]);
+  }, [page]);
 
-  const selectExample = useCallback((id, sid) => {
-    current.current = id;
-    const stillCurrent = () => current.current === id;
-    setExampleId(id);
-    setExample(null);
-    setSimulation(null);
-    setGraph(null);
-    setErrors({});
-    const url = new URL(window.location.href);
-    url.searchParams.set('student', sid);
-    url.searchParams.set('moment', id);
-    window.history.replaceState(null, '', url);
-    const fail = (key) => (err) => stillCurrent() && setErrors((e) => ({ ...e, [key]: err.message }));
-    api.example(id).then((x) => stillCurrent() && setExample(x)).catch(fail('example'));
-    api.simulate(id).then((x) => stillCurrent() && setSimulation(x)).catch(fail('simulation'));
-    api.graph(id).then((x) => stillCurrent() && setGraph(x)).catch(fail('graph'));
-  }, []);
-
-  const selectStudent = useCallback((sid) => {
-    setStudentId(sid);
-    setDetail(null);
-    api.student(sid).then((d) => {
-      setDetail(d);
-      const wanted = d.examples.find((e) => e.id === initial.current.example);
-      initial.current.example = null;
-      const chosen = wanted ?? d.examples[Math.floor(d.examples.length / 2)];
-      if (chosen) selectExample(chosen.id, sid);
-    }).catch((err) => setErrors({ load: err.message }));
-  }, [selectExample]);
-
-  useEffect(() => {
-    Promise.all([api.info(), api.students()])
-      .then(([i, s]) => {
-        setInfo(i);
-        setStudents(s);
-        const wanted = s.find((x) => x.id === initial.current.student);
-        const first = wanted ?? [...s].sort((a, b) => b.examples - a.examples)[0];
-        if (first) selectStudent(first.id);
-      })
-      .catch((err) => setErrors({ load: err.message }));
-  }, [selectStudent]);
-
-  const summary = students.find((s) => s.id === studentId);
+  const open = (id) => {
+    setPage(id);
+    window.scrollTo({ top: 0 });
+  };
 
   return (
-    <div className="max-w-[1400px] mx-auto p-4 flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--accent)', color: '#fff' }}>
-            <Route size={20} aria-hidden />
-          </div>
-          <div>
-            <div className="text-lg font-semibold leading-tight">Maths Learning Path Recommender</div>
-            <div className="muted text-xs">
-              Picks each student's next three maths topics, in order. Trained on the attempts of real students of
-              Junyi Academy, an online maths platform.
-            </div>
-          </div>
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-20" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+        <div className="mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ maxWidth: 1280 }}>
+          <button type="button" className="flex items-center gap-3 text-left" onClick={() => open('plan')}>
+            <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--accent)', color: '#fff' }}>
+              <Route size={20} aria-hidden />
+            </span>
+            <span>
+              <span className="block font-semibold leading-tight">{APP.name}</span>
+              <span className="block muted text-xs">{APP.tagline}</span>
+            </span>
+          </button>
+          <nav className="flex flex-wrap gap-1" aria-label="Pages">
+            {PAGES.map(([id, label]) => (
+              <button key={id} type="button" className="px-3 py-2 rounded-lg text-sm" aria-current={page === id ? 'page' : undefined}
+                onClick={() => open(id)}
+                style={page === id ? { background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 600 } : { color: 'var(--ink-2)' }}>
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
-        {info && (
-          <div className="flex flex-wrap gap-2">
-            <span className="chip num">Test NDCG@3 {info.metrics.pointer.ndcg.mean.toFixed(3)}</span>
-            {info.metrics.markov && <span className="chip num">Markov {info.metrics.markov.ndcg.mean.toFixed(3)}</span>}
-            <span className="chip num">{fmtNum(info.num_concepts)} topics</span>
-          </div>
-        )}
       </header>
 
-      <nav className="flex flex-wrap gap-2" role="tablist" aria-label="Pages">
-        {TABS.map(([id, label, hint]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} className="btn" title={hint}
-            onClick={() => setTab(id)}
-            style={tab === id ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' } : undefined}>
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      {errors.load && (
-        <div className="card bad">Couldn't reach the Maths Learning Path Recommender API ({errors.load}). Is <code>python backend/server.py</code> running?</div>
+      {error && (
+        <div className="page" style={{ paddingBottom: 0 }}>
+          <div className="card bad">Couldn't reach the app's server ({error}). Is <code>python backend/server.py</code> running?</div>
+        </div>
       )}
 
-      {tab === 'new' && <NewStudent />}
-      {tab === 'results' && <Results />}
-
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] items-start" hidden={tab !== 'students'}>
-        <aside>
-          {students.length > 0
-            ? <StudentList students={students} selected={studentId} onSelect={selectStudent} />
-            : !errors.load && <div className="skeleton" style={{ height: 400 }} />}
-        </aside>
-
-        <main className="flex flex-col gap-4 min-w-0">
-          {summary && <StudentHeader summary={summary} detail={detail} exampleId={exampleId} onSelectExample={(id) => selectExample(id, studentId)} />}
-          {errors.example && <div className="card bad">Couldn't load this moment: {errors.example}</div>}
-          {!example && !errors.example && studentId !== null && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <div className="skeleton" style={{ height: 260 }} />
-              <div className="skeleton" style={{ height: 260 }} />
-            </div>
-          )}
-          {example && (
-            <>
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start">
-                <PathCard example={example} />
-                <HistoryCard example={example} />
-              </div>
-              <MethodComparison example={example} simulation={simulation} />
-              <div className="grid gap-4 xl:grid-cols-2 items-start">
-                <SimulationChart example={example} simulation={simulation} error={errors.simulation} />
-                <TutorPanel key={example.id} example={example} />
-              </div>
-              <CandidateTable example={example} />
-              <PrereqGraph example={example} graph={graph} error={errors.graph} trainStudents={info?.train_students} />
-            </>
-          )}
-          {info && <ModelCard info={info} />}
-        </main>
+      <div className="flex-1">
+        {page === 'plan' && <Plan tutorMode={info?.tutor} />}
+        {page === 'examples' && <Examples tutorMode={info?.tutor} />}
+        {page === 'how' && <HowItWorks />}
       </div>
+
+      {info && (
+        <footer className="muted text-xs" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="mx-auto px-4 py-6" style={{ maxWidth: 1280 }}>
+            Learned from the <a href={info.dataset.url} style={{ color: 'var(--accent)' }}>{info.dataset.name}</a>, licensed{' '}
+            <a href={info.dataset.license_url} style={{ color: 'var(--accent)' }}>{info.dataset.license}</a>. Exercise names are machine-translated.
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
