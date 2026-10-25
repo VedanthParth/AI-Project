@@ -1,0 +1,337 @@
+{
+  "split": "test",
+  "examples": 10107,
+  "strongest_baseline": "gru_next_item",
+  "oracle_reward": 0.2388413973741817,
+  "chance": {
+    "precision": 0.15,
+    "recall": 0.15,
+    "hit_rate": 0.4035087719298246,
+    "ndcg": 0.15,
+    "mrr": 0.25687134502923975,
+    "first_step": 0.07851489066983279
+  },
+  "rows": {
+    "random": {
+      "label": "Random",
+      "seeds": 1,
+      "precision": [
+        0.1503578378021833,
+        null
+      ],
+      "hit_rate": [
+        0.4025922627881666,
+        null
+      ],
+      "ndcg": [
+        0.15051407640168377,
+        null
+      ],
+      "mrr": [
+        0.2575772566867847,
+        null
+      ],
+      "first_step": [
+        0.07658058771148708,
+        null
+      ],
+      "reward_share": [
+        -0.41052722087674204,
+        null
+      ],
+      "violations": [
+        0.9651726526169981,
+        null
+      ],
+      "dkt_gain": [
+        0.022502082121745426,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.15051407640168377,
+        "ci_low": 0.14672528322347145,
+        "ci_high": 0.15430157998923072
+      }
+    },
+    "popularity": {
+      "label": "Popularity",
+      "seeds": 1,
+      "precision": [
+        0.31413871574156527,
+        null
+      ],
+      "hit_rate": [
+        0.5732660532304343,
+        null
+      ],
+      "ndcg": [
+        0.3126278998945703,
+        null
+      ],
+      "mrr": [
+        0.41998944625836887,
+        null
+      ],
+      "first_step": [
+        0.17611556347086177,
+        null
+      ],
+      "reward_share": [
+        -0.043652063799142674,
+        null
+      ],
+      "violations": [
+        0.42742653606411396,
+        null
+      ],
+      "dkt_gain": [
+        0.022846472855174632,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.3126278998945703,
+        "ci_low": 0.30624906419951975,
+        "ci_high": 0.3186733572129584
+      }
+    },
+    "markov": {
+      "label": "Markov",
+      "seeds": 1,
+      "precision": [
+        0.7120477556808812,
+        null
+      ],
+      "hit_rate": [
+        0.9460769763530227,
+        null
+      ],
+      "ndcg": [
+        0.7431772115784298,
+        null
+      ],
+      "mrr": [
+        0.888592064905511,
+        null
+      ],
+      "first_step": [
+        0.6451963985356683,
+        null
+      ],
+      "reward_share": [
+        -0.08227388229145116,
+        null
+      ],
+      "violations": [
+        0.5030177104976749,
+        null
+      ],
+      "dkt_gain": [
+        0.028796844126807726,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.7431772115784298,
+        "ci_low": 0.7371666999811513,
+        "ci_high": 0.7487750516836543
+      }
+    },
+    "gru_next_item": {
+      "label": "GRU next-item",
+      "seeds": 1,
+      "precision": [
+        0.7594736321361433,
+        null
+      ],
+      "hit_rate": [
+        0.9498367468091422,
+        null
+      ],
+      "ndcg": [
+        0.7751251722615795,
+        null
+      ],
+      "mrr": [
+        0.8807757000098941,
+        null
+      ],
+      "first_step": [
+        0.5461561294152567,
+        null
+      ],
+      "reward_share": [
+        -0.1152416110752422,
+        null
+      ],
+      "violations": [
+        0.5483328386266944,
+        null
+      ],
+      "dkt_gain": [
+        0.028142856931051972,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.7751251722615795,
+        "ci_low": 0.7695486742366985,
+        "ci_high": 0.7807750481479052
+      }
+    },
+    "pointer": {
+      "label": "Pointer network",
+      "seeds": 1,
+      "precision": [
+        0.7773160515814121,
+        null
+      ],
+      "hit_rate": [
+        0.9463738003364005,
+        null
+      ],
+      "ndcg": [
+        0.7861534297429318,
+        null
+      ],
+      "mrr": [
+        0.8721678044919363,
+        null
+      ],
+      "first_step": [
+        0.5857326605323043,
+        null
+      ],
+      "reward_share": [
+        -0.10315194933511229,
+        null
+      ],
+      "violations": [
+        0.5332937568022162,
+        null
+      ],
+      "dkt_gain": [
+        0.028838173210274026,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.7861534297429318,
+        "ci_low": 0.7803491102081401,
+        "ci_high": 0.7921161193384166
+      },
+      "vs_strongest": {
+        "mean": 0.011028257481352305,
+        "ci_low": 0.006188332707412873,
+        "ci_high": 0.016154107768265886,
+        "p_value": 0.0
+      }
+    },
+    "rl": {
+      "label": "Pointer network + RL",
+      "seeds": 1,
+      "precision": [
+        0.7727317700603542,
+        null
+      ],
+      "hit_rate": [
+        0.944691797763926,
+        null
+      ],
+      "ndcg": [
+        0.7820852054754911,
+        null
+      ],
+      "mrr": [
+        0.870024075723096,
+        null
+      ],
+      "first_step": [
+        0.5884040763827051,
+        null
+      ],
+      "reward_share": [
+        -0.010826648159309053,
+        null
+      ],
+      "violations": [
+        0.4368259622044128,
+        null
+      ],
+      "dkt_gain": [
+        0.028956130415808686,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.7820852054754911,
+        "ci_low": 0.7760366558792999,
+        "ci_high": 0.7879814644258257
+      },
+      "vs_strongest": {
+        "mean": 0.006960033213911517,
+        "ci_low": 0.001996534303432427,
+        "ci_high": 0.011836862696607402,
+        "p_value": 0.004
+      }
+    },
+    "students": {
+      "label": "Students' own next concepts",
+      "seeds": 1,
+      "reward_share": [
+        -0.08665716918015871,
+        null
+      ],
+      "violations": [
+        0.5173642030276047,
+        null
+      ],
+      "dkt_gain": [
+        0.02987190922635533,
+        null
+      ]
+    },
+    "bkt_oracle": {
+      "label": "BKT oracle",
+      "seeds": 1,
+      "precision": [
+        0.14174994228422544,
+        null
+      ],
+      "hit_rate": [
+        0.3691500939942614,
+        null
+      ],
+      "ndcg": [
+        0.14170772551577085,
+        null
+      ],
+      "mrr": [
+        0.2378054813495597,
+        null
+      ],
+      "first_step": [
+        0.07974671020085089,
+        null
+      ],
+      "reward_share": [
+        1.0,
+        null
+      ],
+      "violations": [
+        0.00019788265558523795,
+        null
+      ],
+      "dkt_gain": [
+        0.03234997514379967,
+        null
+      ],
+      "ndcg_ci": {
+        "mean": 0.14170772551577085,
+        "ci_low": 0.13763072165225976,
+        "ci_high": 0.1456556231449024
+      },
+      "vs_strongest": {
+        "mean": -0.6334174467458087,
+        "ci_low": -0.640739221682038,
+        "ci_high": -0.6266521990358611,
+        "p_value": 0.0
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ https://github.com/VedanthParth/AI-Project/tree/pathtrace-rebuild
 | [1. Demo app](#1-run-the-demo-app) | Your laptop | 10 min to install, then instant |
 | [2. Full experiments](#2-run-the-full-experiments-on-your-own-gpu) | Your laptop's GPU, or [Colab](#2b-or-run-them-on-colab) | Several hours; resumable |
 | [3. ML code in a terminal](#3-run-the-ml-code-locally) | Your laptop | About 1 minute on synthetic data |
-| [4. Screenshot checklist](#4-screenshot-checklist-for-the-presentation) | | |
+| [4. Live demo and screenshots](#4-live-demo-and-screenshot-checklist) | | |
 
 ## 0. Get the code
 
@@ -60,8 +60,8 @@ Then open **http://localhost:8000**. Stop the server with Ctrl+C. Next time, onl
   [Google AI Studio](https://aistudio.google.com/apikey), copy `backend/.env.example` to
   `backend/.env` and set `GEMINI_API_KEY`, or paste the key under "Gemini API key" in the app.
 - **Links to a specific moment.** The address bar keeps the student and moment, so a view can
-  be reopened later. With the committed bundle, a good one for the prerequisite map is
-  http://localhost:8000/?tab=students&student=43&moment=472.
+  be reopened later. With the committed bundle, a good one for the demo, with a rich
+  prerequisite map, is http://localhost:8000/?tab=students&student=43&moment=472.
 
 ## 2. Run the full experiments on your own GPU
 
@@ -130,6 +130,9 @@ What each section does:
 - **If Colab disconnects** (free sessions time out and stop when idle), reconnect and
   **Run all** again. Every finished step is skipped, and an interrupted training run continues
   from its last finished epoch.
+- **Earlier Colab sessions** kept everything in `MyDrive/pathtrace`, the project's old name. The
+  first cell renames that folder to `MyDrive/learnpath` once, so its data and finished runs carry
+  over.
 - **Short on GPU time?** In the cell that sets `SEEDS`, use `SEEDS = '0 1 2'`, and skip the two
   cells marked *Optional*. Each training run prints its seconds per epoch, so the first run
   tells you how long the rest will take.
@@ -204,6 +207,10 @@ dataset and lists every command. Training on a CPU is slow (about 3 minutes per 
 
 11. The main results table.
 12. `fig_methods.png`, `fig_training.png` and `fig_rl.png`.
+
+The same table and figures for the earlier 10,000-student subsample (one seed, trained on a
+CPU) are in [`ml/results/junyi-10k`](ml/results/junyi-10k), for
+comparison with the full-data results.
 
 **Terminal** (section 3 above):
 
