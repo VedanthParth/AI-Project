@@ -11,12 +11,12 @@ torch.set_num_threads(1)
 @pytest.fixture(scope="session")
 def bundle(tmp_path_factory):
     """A small app bundle exported from synthetic data, the same way the real one is."""
-    from pathtrace.config import DataConfig, ModelConfig, TrainConfig
-    from pathtrace.dkt import DKTConfig
-    from pathtrace.export import export_bundle
-    from pathtrace.grid import run_grid
-    from pathtrace.preprocess import prepare
-    from pathtrace.synthetic import write_log
+    from learnpath.config import DataConfig, ModelConfig, TrainConfig
+    from learnpath.dkt import DKTConfig
+    from learnpath.export import export_bundle
+    from learnpath.grid import run_grid
+    from learnpath.preprocess import prepare
+    from learnpath.synthetic import write_log
 
     root = tmp_path_factory.mktemp("app")
     log = write_log(root / "Log_Problem.csv", num_students=150, num_concepts=40, mean_length=40, seed=5)

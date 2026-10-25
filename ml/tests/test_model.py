@@ -3,9 +3,9 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from pathtrace.batching import make_batch
-from pathtrace.config import ModelConfig
-from pathtrace.model import PathRecommender
+from learnpath.batching import make_batch
+from learnpath.config import ModelConfig
+from learnpath.model import PathRecommender
 
 
 @pytest.fixture()

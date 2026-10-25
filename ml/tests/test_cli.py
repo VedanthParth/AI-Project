@@ -2,7 +2,7 @@
 
 import json
 
-from pathtrace.cli import main
+from learnpath.cli import main
 
 
 def test_synth_prepare_baselines_train_evaluate(tmp_path):

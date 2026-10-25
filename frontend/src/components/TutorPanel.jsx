@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { KeyRound, Sparkles } from 'lucide-react';
 import { api } from '../api';
 
-const KEY_STORE = 'pathtrace.gemini_key';
+const KEY_STORE = 'learnpath.gemini_key';
 
 function readKey() {
   try {
@@ -55,7 +55,7 @@ export default function TutorPanel({ example }) {
           Why this path?
         </button>
         <div className="flex gap-2 flex-1 min-w-[240px]">
-          <select className="input" value={concept} onChange={(e) => setConcept(e.target.value)} aria-label="Concept to explain">
+          <select className="input" value={concept} onChange={(e) => setConcept(e.target.value)} aria-label="Topic to explain">
             {pathConcepts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <button type="button" className="btn shrink-0" disabled={busy || !concept}

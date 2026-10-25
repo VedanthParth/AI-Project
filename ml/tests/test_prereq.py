@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from pathtrace.config import DataConfig
-from pathtrace.preprocess import Examples, Interactions, load_log
-from pathtrace.prereq import PrereqGraph, example_constraints, infer_graph, path_violations
+from learnpath.config import DataConfig
+from learnpath.preprocess import Examples, Interactions, load_log
+from learnpath.prereq import PrereqGraph, example_constraints, infer_graph, path_violations
 
 
 def _chain_log(tmp_path, num_students=40, length=8, tie_first_two=False):

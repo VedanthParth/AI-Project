@@ -1,4 +1,4 @@
-# PathTrace ML pipeline
+# Maths Learning Path Recommender ML pipeline
 
 Learning path recommendation on the Junyi Academy dataset: a GRU student encoder,
 a Transformer encoder over the candidate set, an LSTM pointer decoder and an
@@ -12,12 +12,12 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 68 tests, about 30 s
+.venv/bin/python -m pytest          # 93 tests, about 1 minute
 ```
 
 Training on the full dataset needs a GPU. On a 4-core CPU the pointer network takes about
 4 ms per training example per epoch, so the full grid runs on Colab: open
-[`notebooks/pathtrace_colab.ipynb`](notebooks/pathtrace_colab.ipynb) in Colab with a GPU
+[`notebooks/colab_experiments.ipynb`](notebooks/colab_experiments.ipynb) in Colab with a GPU
 runtime and run all cells. It keeps data and runs on Google Drive and resumes after a
 disconnect.
 
@@ -37,8 +37,8 @@ unzip junyi.zip && rm junyi.zip    # Log_Problem.csv (3.0 GB), Info_Content.csv,
 ## The whole grid in two commands
 
 ```bash
-python -m pathtrace grid --data data/processed/junyi --runs runs/junyi --content data/raw/junyi/Info_Content.csv
-python -m pathtrace report --data data/processed/junyi --runs runs/junyi --out results/junyi
+python -m learnpath grid --data data/processed/junyi --runs runs/junyi --content data/raw/junyi/Info_Content.csv
+python -m learnpath report --data data/processed/junyi --runs runs/junyi --out results/junyi
 ```
 
 `grid` runs every step below for one dataset (simulators, 4 baselines, 3 model variants x 5
@@ -53,41 +53,42 @@ paired bootstrap CI and p-value) and figures (`fig_training.png`, `fig_rl.png`,
 
 ```bash
 # 1. Raw log -> student-level 70/15/15 split -> sliding-window examples
-python -m pathtrace prepare --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi
+python -m learnpath prepare --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi
 
 # 2. Baselines: random, popularity, markov, gru_next_item (val + test, bootstrap CIs)
-python -m pathtrace baselines --data data/processed/junyi --out runs/junyi/baselines
+python -m learnpath baselines --data data/processed/junyi --out runs/junyi/baselines
 
 # 3. Pointer network: supervised training with early stopping, then val + test
-python -m pathtrace train --data data/processed/junyi --out runs/junyi/pointer-seed0 --seed 0
+python -m learnpath train --data data/processed/junyi --out runs/junyi/pointer-seed0 --seed 0
 
 # 4. Student simulators and structure, all fitted on the train split
-python -m pathtrace bkt --data data/processed/junyi --out runs/junyi/bkt          # RL reward (per-concept BKT)
-python -m pathtrace prereq --data data/processed/junyi --out runs/junyi/prereq \
+python -m learnpath bkt --data data/processed/junyi --out runs/junyi/bkt          # RL reward (per-concept BKT)
+python -m learnpath prereq --data data/processed/junyi --out runs/junyi/prereq \
     --content data/raw/junyi/Info_Content.csv                                      # prerequisite graph
-python -m pathtrace dkt --data data/processed/junyi --out runs/junyi/dkt          # held-out evaluator
+python -m learnpath dkt --data data/processed/junyi --out runs/junyi/dkt          # held-out evaluator
 
 # 5. RL fine-tuning of a supervised checkpoint against the BKT reward
-python -m pathtrace finetune --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt \
+python -m learnpath finetune --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt \
     --bkt runs/junyi/bkt/bkt_params.npz --prereq runs/junyi/prereq/prereq_graph.npz --out runs/junyi/rl-seed0
 
 # 6. DKT learning gain of every method's paths (plus random, the students' own, and the BKT oracle)
-python -m pathtrace gain --data data/processed/junyi --dkt runs/junyi/dkt/dkt.pt \
+python -m learnpath gain --data data/processed/junyi --dkt runs/junyi/dkt/dkt.pt \
     --runs runs/junyi/baselines runs/junyi/pointer-seed0 runs/junyi/rl-seed0 --bkt runs/junyi/bkt/bkt_params.npz
 
 # 7. Re-evaluate a checkpoint
-python -m pathtrace evaluate --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt --split test
+python -m learnpath evaluate --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt --split test
 
 # 8. Bundle a checkpoint, its simulators and 300 test students for the app (needs bkt/, prereq/, dkt/)
-python -m pathtrace export --data data/processed/junyi --runs runs/junyi --checkpoint pointer-seed0 \
+python -m learnpath export --data data/processed/junyi --runs runs/junyi --checkpoint pointer-seed0 \
     --content data/raw/junyi/Info_Content.csv --out ../backend/bundle
 ```
 
-The committed `backend/bundle` was exported from the 10,000-student subsample
-(`prepare --max-students 10000`) with the tie-aware checkpoint `pointer-ties-seed0`. Re-export
-from the full-data runs once the Colab grid has finished.
+The committed `backend/bundle` was exported from the full-data runs (`learnpath all --seeds 0 1 2`)
+with `pointer-seed0`, its RL policy `rl-seed0`, the realistic-distractor model
+`pointer-hard50-seed0` for the New student page, and every evaluation JSON for the Results page
+(see *Testing on genuinely unseen data* below for the export flags).
 
-`python -m pathtrace <command> --help` lists every option with its default. When running
+`python -m learnpath <command> --help` lists every option with its default. When running
 several jobs on one CPU, give each `--threads 1` (before the command name): oversubscribed
 PyTorch threads made two jobs on 4 cores run about 30x slower.
 
@@ -110,11 +111,50 @@ validation losses and metrics, for the training-curve figure), `metrics.json`
 (val/test metrics with 95% bootstrap CIs, KT-head AUC, and the analytic chance level)
 and `preds_<split>.npy` (predicted paths, for significance tests).
 
+## Testing on genuinely unseen data
+
+The main split puts whole students in train, validation and test, and each test example's 20
+candidates contain the 3 real next concepts. Three further evaluations remove those
+simplifications. Every confidence interval and paired test resamples whole students (a
+student contributes up to 20 correlated examples).
+
+```bash
+# Whole catalogue: a Markov shortlist from all ~1,300 unseen concepts, then the pointer network
+# orders it; scored against what students really did, so targets the shortlist missed count as misses
+python -m learnpath catalogue --data data/processed/junyi --shortlist 20 \
+    --checkpoints runs/junyi/pointer-seed0 --out runs/junyi/catalogue_test_20.json
+
+# Train on realistic distractors: each candidate set is the targets plus the unseen concepts
+# the Markov shortlist ranks highest (the same shortlist the catalogue evaluation uses)
+python -m learnpath prepare --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi-hard50 \
+    --negatives markov --num-candidates 50
+
+# New students: fill the onboarding questionnaire in from held-out students' real histories
+# (--current: how many recently finished exercises they name; --noise: share of answers flipped)
+python -m learnpath onboarding --data data/processed/junyi --content data/raw/junyi/Info_Content.csv \
+    --checkpoints runs/junyi/pointer-seed0 --current 1 --out runs/junyi/onboarding_current1.json
+
+# Walk-forward: train on activity before each origin, test on the next 60 days,
+# reported for all, new and continuing students
+python -m learnpath walkforward --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi-wf \
+    --origins 2019-01-01 2019-03-01 2019-05-01
+python -m learnpath grid --data data/processed/junyi-wf/fold-2019-03-01 --runs runs/junyi-wf/fold-2019-03-01 \
+    --variants pointer --seeds 0 --no-rl --no-gain
+python -m learnpath walkforward-report --data data/processed/junyi-wf/fold-2019-03-01 \
+    --runs runs/junyi-wf/fold-2019-03-01 --out runs/junyi-wf/report-2019-03-01.json
+```
+
+`export --results results/junyi --shortlist-model runs/junyi-hard50/pointer-hard50-seed0/model.pt`
+adds the report and every evaluation JSON above to the app bundle (its Results page), the
+realistic-distractor model (used on the New student page), and, when `rl-seed0` exists, the RL
+policy. With `--content` it also writes `topics.json`, the strand and unit names from
+`resources/junyi_topics_en.csv` that the questionnaire asks about.
+
 ## Development without the real data
 
 ```bash
-python -m pathtrace synth --out data/raw/synthetic/Log_Problem.csv
-python -m pathtrace prepare --log data/raw/synthetic/Log_Problem.csv --out data/processed/synthetic
+python -m learnpath synth --out data/raw/synthetic/Log_Problem.csv
+python -m learnpath prepare --log data/raw/synthetic/Log_Problem.csv --out data/processed/synthetic
 ```
 
 The synthetic log has the same columns as `Log_Problem.csv`. **Its numbers mean
@@ -142,7 +182,7 @@ The Paper lane should update these sections to match the code:
 - **Section 4.4, decoder order.** The LSTM step comes first, then attention:
   `h_t = LSTM([e_prev; context_{t-1}], h_{t-1})`, then the scores over eligible
   candidates, then `context_t`. `h_0 = s`, and `e_prev` starts as a learned vector.
-  See the docstring in `pathtrace/model.py`.
+  See the docstring in `learnpath/model.py`.
 - **Section 5.1, optimisation.** Batch size 64, weight decay 1e-5, dropout 0.1, and
   early stopping on validation NDCG@3 (patience 5, at most 50 epochs). Histories are
   truncated to their last 100 attempts.
@@ -164,13 +204,13 @@ The Paper lane should update these sections to match the code:
   set, every unseen candidate has the same expected gain, 0.105.
 
 - **Section 4.6 and 8(3), prerequisites.** The prerequisite map is no longer empty: it is
-  inferred from training students' first-attempt order (see `pathtrace/prereq.py`), and it
+  inferred from training students' first-attempt order (see `learnpath/prereq.py`), and it
   agrees with Junyi's own topic hierarchy and learning stages far above chance.
 - **Section 5.2 and Algorithm 1, RL.** The baseline is the greedy path's reward
   (self-critical), the entropy bonus is applied, a supervised term (0.5) anchors the policy,
   and training runs up to 20 epochs with early stopping on validation reward. The
   moving-average baseline is kept as an ablation, now applied before its update.
-- **New evaluation.** DKT learning gain E_p (`pathtrace/dkt.py`) and the share of the BKT
+- **New evaluation.** DKT learning gain E_p (`learnpath/dkt.py`) and the share of the BKT
   oracle's reward, alongside the ranking metrics.
 
 - **Section 5.1, batch size.** The Colab grid uses batch size 256 to keep the GPU busy; report

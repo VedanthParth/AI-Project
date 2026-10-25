@@ -1,4 +1,4 @@
-import { pct } from '../api';
+import { fmtDate, fmtNum, pct } from '../api';
 
 export default function HistoryCard({ example }) {
   const h = example.history;
@@ -7,7 +7,7 @@ export default function HistoryCard({ example }) {
       <div>
         <h2 className="card-title">Before this moment</h2>
         <p className="card-sub num">
-          {example.date} · {h.attempts.toLocaleString()} attempts on {h.concepts} concepts · {pct(h.accuracy)} correct
+          {fmtDate(example.date)} · {fmtNum(h.attempts)} attempts on {h.concepts} topics · {pct(h.accuracy)} correct
         </p>
       </div>
       <div>

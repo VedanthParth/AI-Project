@@ -3,8 +3,8 @@ import { METHOD_COLOR, METHOD_ORDER } from '../api';
 
 const DESCRIPTION = {
   pointer: 'Our model',
-  markov: 'What usually follows the last few concepts',
-  popularity: 'Most-practised concepts overall',
+  markov: 'What usually follows the last few topics',
+  popularity: 'Most-practised topics overall',
   bkt_gain: 'Largest expected mastery gain under BKT',
   actual: 'Ground truth',
 };
@@ -15,7 +15,7 @@ export default function MethodComparison({ example, simulation }) {
       <div>
         <h2 className="card-title">Compare with the baselines</h2>
         <p className="card-sub">
-          Same moment, same candidates. Prerequisite violations count path concepts started before an inferred
+          Same moment, same candidates. Prerequisite violations count path topics started before an inferred
           prerequisite; DKT gain is the simulated improvement on all candidates after practising the path.
         </p>
       </div>

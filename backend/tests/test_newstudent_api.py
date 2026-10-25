@@ -1,0 +1,63 @@
+import shutil
+
+import pytest
+from fastapi.testclient import TestClient
+
+from learnpath.utils import load_json, save_json
+from server import create_app
+
+
+@pytest.fixture(scope="module")
+def topics_client(bundle, tmp_path_factory):
+    """The test bundle plus a made-up topic hierarchy: 2 junior strands, 4 units (concept id mod 4)."""
+    out = tmp_path_factory.mktemp("topics") / "bundle"
+    shutil.copytree(bundle, out)
+    concepts = load_json(out / "concepts.json")
+    for c in concepts:
+        c["stage"] = "junior"
+    save_json(concepts, out / "concepts.json")
+    save_json(
+        {
+            "strands": [{"id": j, "name": f"Strand {j}", "stage": "junior"} for j in range(2)],
+            "units": [
+                {"id": i, "strand": i % 2, "name": f"Unit {i}", "stage": "junior",
+                 "concepts": [c["id"] for c in concepts if c["id"] % 4 == i]}
+                for i in range(4)
+            ],
+        },
+        out / "topics.json",
+    )
+    (out / "results").mkdir(exist_ok=True)
+    save_json({"methods": {}}, out / "results" / "catalogue_test_20.json")
+    return TestClient(create_app(out, frontend_dir=None))
+
+
+def test_older_bundles_have_no_new_student_page(bundle):
+    client = TestClient(create_app(bundle, frontend_dir=None))
+    assert client.get("/api/questionnaire").status_code == 404
+    assert client.get("/api/results").json() == {}
+
+
+def test_questionnaire_then_plan_then_practice(topics_client):
+    q = topics_client.get("/api/questionnaire").json()
+    assert len(q["strands"]) == 2 and len(q["units"]) == 4
+    last = q["units"][0]["exercises"][1]["id"]
+    body = {"stage": "junior", "strands": {"1": "strong"}, "units": {"0": "bad"}, "current": [last]}
+    plan = topics_client.post("/api/plan", json=body).json()
+    step1 = plan["paths"]["pointer"]["concepts"][0]["id"]
+    assert len(plan["paths"]["pointer"]["concepts"]) == 3
+
+    body["practice"] = [{"concept": step1, "correct": False}]
+    after = topics_client.post("/api/plan", json=body).json()
+    assert step1 not in [c["id"] for c in after["paths"]["pointer"]["concepts"]]
+    assert after["pipeline"]["history_attempts"] == plan["pipeline"]["history_attempts"] + 1
+
+
+def test_plan_rejects_bad_answers(topics_client):
+    assert topics_client.post("/api/plan", json={"stage": "senior", "current": [1]}).status_code == 422
+    assert topics_client.post("/api/plan", json={"stage": "junior"}).status_code == 422
+    assert topics_client.post("/api/plan", json={"stage": "junior", "strands": {"0": "great"}, "current": [1]}).status_code == 422
+
+
+def test_results_come_from_the_bundle(topics_client):
+    assert topics_client.get("/api/results").json() == {"catalogue_test_20": {"methods": {}}}

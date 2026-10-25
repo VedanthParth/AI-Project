@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from pathtrace.dkt import DKT, DKTConfig, evaluate_dkt, learning_gain, train_dkt
+from learnpath.dkt import DKT, DKTConfig, evaluate_dkt, learning_gain, train_dkt
 
 
 @pytest.fixture(scope="module")
@@ -10,7 +10,7 @@ def trained(tiny_processed, tmp_path_factory):
     cfg = DKTConfig(hidden_dim=32, embed_dim=16, max_epochs=3, patience=3, batch_size=32)
     out = tmp_path_factory.mktemp("dkt")
     summary = train_dkt(tiny_processed, cfg, out, log=lambda _: None)
-    from pathtrace.dkt import load_dkt
+    from learnpath.dkt import load_dkt
 
     return load_dkt(out / "dkt.pt", torch.device("cpu")), summary
 

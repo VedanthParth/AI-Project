@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from pathtrace import metrics
-from pathtrace.baselines import MarkovBaseline, PopularityBaseline, evaluate_baseline
-from pathtrace.config import DataConfig
-from pathtrace.preprocess import prepare
+from learnpath import metrics
+from learnpath.baselines import MarkovBaseline, PopularityBaseline, evaluate_baseline
+from learnpath.config import DataConfig
+from learnpath.preprocess import prepare
 
 
 def test_popularity_scores_come_from_training_counts(tiny_processed):

@@ -1,3 +1,5 @@
+import { fmtNum } from '../api';
+
 const ROWS = [
   ['pointer', 'Pointer network'],
   ['gru_next_item', 'GRU next-item'],
@@ -13,7 +15,7 @@ export default function ModelCard({ info }) {
       <div>
         <h2 className="card-title">About this model</h2>
         <p className="card-sub">
-          Checkpoint <code>{info.source.checkpoint}</code> trained on {info.train_students.toLocaleString()} students
+          Checkpoint <code>{info.source.checkpoint}</code> trained on {fmtNum(info.train_students)} students
           from <code>{info.source.data}</code>. Scores on the full {info.source.split} split, with 95% bootstrap intervals.
         </p>
       </div>
@@ -46,14 +48,14 @@ export default function ModelCard({ info }) {
       </div>
       <p className="muted text-xs m-0">
         {m.markov && m.markov.first_step.mean > m.pointer.first_step.mean
-          ? "Markov still picks the first concept best: a student's next concept usually follows the last few in Junyi's curriculum order. "
+          ? "Markov still picks the first topic best: a student's next topic usually follows the last few in Junyi's syllabus order. "
           : ''}
         DKT simulator test AUC: {info.dkt_auc ? info.dkt_auc.toFixed(3) : 'n/a'}.
       </p>
       <p className="muted text-xs m-0">
         Data: <a href={info.dataset.url} style={{ color: 'var(--accent)' }}>{info.dataset.name}</a>, licensed{' '}
         <a href={info.dataset.license_url} style={{ color: 'var(--accent)' }}>{info.dataset.license}</a>. Student
-        labels are replaced with numbers. Concept names are machine-translated from Chinese. Mastery is a BKT estimate,
+        IDs are replaced with roll numbers. Topic names are machine-translated from Chinese, in Indian English. Mastery is a BKT estimate,
         not a test score.
       </p>
     </footer>

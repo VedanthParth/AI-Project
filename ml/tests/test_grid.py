@@ -1,8 +1,8 @@
-from pathtrace.config import DataConfig, ModelConfig, TrainConfig
-from pathtrace.dkt import DKTConfig
-from pathtrace.grid import run_grid
-from pathtrace.preprocess import prepare
-from pathtrace.utils import load_json
+from learnpath.config import DataConfig, ModelConfig, TrainConfig
+from learnpath.dkt import DKTConfig
+from learnpath.grid import run_grid
+from learnpath.preprocess import prepare
+from learnpath.utils import load_json
 
 
 def test_grid_runs_everything_then_resumes_without_redoing_work(tiny_log, tmp_path):
@@ -36,7 +36,7 @@ def test_grid_runs_everything_then_resumes_without_redoing_work(tiny_log, tmp_pa
     gain_methods = load_json(runs / "gain_test.json")["methods"]
     assert {"pointer-seed0", "rl-seed0", "markov", "bkt_oracle"} <= set(gain_methods)
 
-    from pathtrace.report import build_report
+    from learnpath.report import build_report
 
     result = build_report(data, runs, tmp_path / "results", n_boot=50, log=lambda _: None)
     assert {"random", "markov", "pointer", "pointer-nokt", "rl", "rl-ema", "students", "bkt_oracle"} <= set(result["rows"])

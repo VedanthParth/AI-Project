@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Route } from 'lucide-react';
-import { api } from './api';
+import { api, fmtNum } from './api';
 import StudentList from './components/StudentList';
 import StudentHeader from './components/StudentHeader';
 import HistoryCard from './components/HistoryCard';
@@ -11,11 +11,20 @@ import SimulationChart from './components/SimulationChart';
 import PrereqGraph from './components/PrereqGraph';
 import TutorPanel from './components/TutorPanel';
 import ModelCard from './components/ModelCard';
+import NewStudent from './pages/NewStudent';
+import Results from './pages/Results';
+
+const TABS = [
+  ['new', 'New student', 'Answer a few questions; watch the path being built and change'],
+  ['students', 'Real students', 'Held-out Junyi students, with what they really did next'],
+  ['results', 'Results', 'How well it works on unseen students'],
+];
 
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
   const num = (key) => (params.has(key) ? Number(params.get(key)) : null);
-  return { student: num('student'), example: num('moment') };
+  const tab = TABS.some(([id]) => id === params.get('tab')) ? params.get('tab') : null;
+  return { student: num('student'), example: num('moment'), tab: tab ?? (params.has('student') ? 'students' : 'new') };
 }
 
 export default function App() {
@@ -30,6 +39,13 @@ export default function App() {
   const [errors, setErrors] = useState({});
   const initial = useRef(readUrl());
   const current = useRef(null);
+  const [tab, setTab] = useState(() => readUrl().tab);
+  useEffect(() => {
+    // Keep the open page in the address bar, so a reload or a shared link opens the same page.
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState(null, '', url);
+  }, [tab]);
 
   const selectExample = useCallback((id, sid) => {
     current.current = id;
@@ -83,24 +99,40 @@ export default function App() {
             <Route size={20} aria-hidden />
           </div>
           <div>
-            <div className="text-lg font-semibold leading-tight">PathTrace</div>
-            <div className="muted text-xs">Learning-path recommendation with a pointer network, on real Junyi Academy students</div>
+            <div className="text-lg font-semibold leading-tight">Maths Learning Path Recommender</div>
+            <div className="muted text-xs">
+              Picks each student's next three maths topics, in order. Trained on the attempts of real students of
+              Junyi Academy, an online maths platform.
+            </div>
           </div>
         </div>
         {info && (
           <div className="flex flex-wrap gap-2">
             <span className="chip num">Test NDCG@3 {info.metrics.pointer.ndcg.mean.toFixed(3)}</span>
             {info.metrics.markov && <span className="chip num">Markov {info.metrics.markov.ndcg.mean.toFixed(3)}</span>}
-            <span className="chip num">{info.num_concepts.toLocaleString()} concepts</span>
+            <span className="chip num">{fmtNum(info.num_concepts)} topics</span>
           </div>
         )}
       </header>
 
+      <nav className="flex flex-wrap gap-2" role="tablist" aria-label="Pages">
+        {TABS.map(([id, label, hint]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} className="btn" title={hint}
+            onClick={() => setTab(id)}
+            style={tab === id ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' } : undefined}>
+            {label}
+          </button>
+        ))}
+      </nav>
+
       {errors.load && (
-        <div className="card bad">Couldn't reach the PathTrace API ({errors.load}). Is <code>python backend/server.py</code> running?</div>
+        <div className="card bad">Couldn't reach the Maths Learning Path Recommender API ({errors.load}). Is <code>python backend/server.py</code> running?</div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] items-start">
+      {tab === 'new' && <NewStudent />}
+      {tab === 'results' && <Results />}
+
+      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] items-start" hidden={tab !== 'students'}>
         <aside>
           {students.length > 0
             ? <StudentList students={students} selected={studentId} onSelect={selectStudent} />

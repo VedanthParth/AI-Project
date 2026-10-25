@@ -44,7 +44,7 @@ export default function SimulationChart({ example, simulation, error }) {
       <div>
         <h2 className="card-title">Simulate following each path</h2>
         <p className="card-sub">
-          A separate DKT model, never used in training, plays the student: {per} attempts on each path concept, answers
+          A separate DKT model, never used in training, plays the student: {per} attempts on each path topic, answers
           drawn from its predictions, averaged over {simulation.rollouts} runs. The line is the predicted chance of
           answering the {example.candidates.length} candidates correctly.
         </p>
@@ -77,7 +77,7 @@ export default function SimulationChart({ example, simulation, error }) {
             <g key={i}>
               <line x1={x(i)} x2={x(i)} y1={M.top} y2={H - M.bottom} stroke="var(--grid)" strokeDasharray="2 3" />
               <text x={x(i)} y={H - M.bottom + 16} textAnchor={i === n - 1 ? 'end' : 'middle'} fontSize="11" fill="var(--muted)">
-                after concept {i / per}
+                after topic {i / per}
               </text>
             </g>
           ))}
@@ -100,7 +100,7 @@ export default function SimulationChart({ example, simulation, error }) {
         </svg>
         {hover !== null && (
           <div className="tooltip" style={{ left: `${(x(hover) / W) * 100}%`, top: 0, transform: `translateX(${hover > n / 2 ? '-105%' : '5%'})` }}>
-            <div className="font-medium mb-1">{hover === 0 ? 'Before practice' : `Attempt ${hover} (concept ${Math.ceil(hover / per)})`}</div>
+            <div className="font-medium mb-1">{hover === 0 ? 'Before practice' : `Attempt ${hover} (topic ${Math.ceil(hover / per)})`}</div>
             {[...series].sort((a, b) => b.curve[hover] - a.curve[hover]).map((s) => (
               <div key={s.name} className="flex items-center justify-between gap-4">
                 <span className="flex items-center gap-1.5">

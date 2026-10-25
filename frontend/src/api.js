@@ -26,7 +26,14 @@ export const api = {
   simulate: (id) => request(`/api/examples/${id}/simulate`),
   graph: (id) => request(`/api/examples/${id}/graph`),
   tutor: (id, body) => request(`/api/examples/${id}/tutor`, { method: 'POST', body: JSON.stringify(body) }),
+  questionnaire: () => request('/api/questionnaire'),
+  plan: (body) => request('/api/plan', { method: 'POST', body: JSON.stringify(body) }),
+  results: () => request('/api/results'),
 };
+
+// New student page: the three ways of choosing a path.
+export const PLAN_ORDER = ['pointer', 'rl', 'markov'];
+export const PLAN_COLOR = { pointer: 'var(--series-1)', rl: 'var(--series-3)', markov: 'var(--series-2)' };
 
 export const METHOD_ORDER = ['pointer', 'markov', 'popularity', 'bkt_gain', 'actual'];
 
@@ -40,3 +47,15 @@ export const METHOD_COLOR = {
 };
 
 export const pct = (v, digits = 0) => `${(v * 100).toFixed(digits)}%`;
+
+// Indian conventions for everything the app displays: lakh and crore digit grouping (1,62,17,311),
+// day-month-year dates, and Junyi's school stages (Taiwan's grades 1-6, 7-9 and 10-12) named by the
+// Indian classes they roughly match.
+export const fmtNum = (v) => Number(v).toLocaleString('en-IN');
+export const fmtDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+export const STAGE_LABEL = {
+  elementary: 'Primary (Class 1–6)',
+  junior: 'Middle & Secondary (Class 7–9)',
+  senior: 'Senior Secondary (Class 10–12)',
+};
+export const stageLabel = (stage) => STAGE_LABEL[stage] ?? stage;

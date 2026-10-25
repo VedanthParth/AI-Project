@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Background, Controls, MarkerType, ReactFlow } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 import '@xyflow/react/dist/style.css';
-import { pct } from '../api';
+import { fmtNum, pct } from '../api';
 
 const NODE_W = 190;
 const NODE_H = 54;
@@ -111,8 +111,8 @@ export default function PrereqGraph({ example, graph, error, trainStudents }) {
       <div>
         <h2 className="card-title">Prerequisite map</h2>
         <p className="card-sub">
-          Arrows run from a concept to one that training students almost always started after it (inferred from{' '}
-          {trainStudents?.toLocaleString() ?? 'the training'} students' first attempts). Blue outlines are the
+          Arrows run from a topic to one that training students almost always started after it (inferred from{' '}
+          {trainStudents != null ? fmtNum(trainStudents) : 'the training'} students' first attempts). Blue outlines are the
           recommended path; dashed boxes are prerequisites outside the candidate set.
         </p>
       </div>

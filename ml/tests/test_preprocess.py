@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from pathtrace.config import DataConfig
-from pathtrace.preprocess import (
+from learnpath.config import DataConfig
+from learnpath.preprocess import (
     SPLITS,
     build_examples,
     concept_popularity,

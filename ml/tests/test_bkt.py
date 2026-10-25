@@ -3,8 +3,8 @@ from itertools import permutations
 import numpy as np
 import pytest
 
-from pathtrace import bkt
-from pathtrace.preprocess import Examples, Interactions
+from learnpath import bkt
+from learnpath.preprocess import Examples, Interactions
 
 TRUTH = {  # concept id -> (p_init, p_learn, p_guess, p_slip)
     1: (0.20, 0.10, 0.15, 0.08),

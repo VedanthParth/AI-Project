@@ -1,0 +1,53 @@
+kind,id,parent,stage,exercises,name_en
+strand,ICgke8JJv5eapCPwyj1aco8PEtoBkUbTZYIqxmYtqBk=,,elementary,100,Word Problems
+unit,bo3jsx1beVLEZ+2sckxdZNYnlLpVS7hb5lWU2baQ66k=,ICgke8JJv5eapCPwyj1aco8PEtoBkUbTZYIqxmYtqBk=,elementary,16,Classic Word Problems
+unit,4cISKCt3nXWe4r6Q8bzjOiL2EYYsZyT6Z0mNNJckqEc=,ICgke8JJv5eapCPwyj1aco8PEtoBkUbTZYIqxmYtqBk=,elementary,84,Order of Operations (BODMAS)
+strand,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,,junior,136,Geometry
+unit,APMXggE9pI1fpPhZYSwqSQGw/eQmPpLFBY7s9oBPWIk=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,31,Circles
+unit,QdGKgDnnqgC77msy0sEBtbf4K+UaE00QCPNJJveO6l8=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,19,"Lines, Angles and Constructions"
+unit,gNfvqveMYfgA/24bthu07e23yBnXcBBhU8/Zl7V5Mw4=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,15,Parallel Lines and Quadrilaterals
+unit,jGhUUjg94EaD/hHImiFXSyies5ALErVlma00y6AybTM=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,14,Visualising Solid Shapes
+unit,y3DisyzHxXkHzY6dwzju7SLxSfpowEusVisWi6I8Xaw=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,15,Congruence of Triangles
+unit,1B4NV31TSyP4bLmP6zbniKc01IeroOFi4KeZVsvWr7o=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,24,Similarity and Proportional Segments
+unit,3K6i70RxArAjJBg/nT9AMCCNRQsNrr32YMy7N31uJCU=,MfUX4BrIuFzJjm97tCQVisXbonyvtYtwCUJo6JpmoyU=,junior,18,Proofs and Centres of a Triangle
+strand,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,,junior,224,Algebra
+unit,adBGt1t/h6kVwnNoQ/bmRj5KcQLWM8NKNR9HeqJy9ZA=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,37,Algebraic Expressions and Identities
+unit,bnTxSNli6FmYFjFpnuPi5RDuC2L3MsoN4XIz7sdfdvI=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,26,Linear Equations in One Variable
+unit,byyCU6NaraWhgyjXkt9R1RZVgu0ZxsL22jS4UxVY6Ew=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,23,Quadratic Equations
+unit,kPy7IhYLwTHngKzp5/qneBv4L9KwwJ/xLWomT8kXrpE=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,20,Linear Functions
+unit,ls/y6S49d4XllF0S7f/RbTdoVAUnVFywHWp5SL66hpM=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,18,Linear Inequalities
+unit,o91QgDqF3F9aBsG9Hkj9t4iSWIwpYTe35Qvzt6liOq4=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,19,Quadratic Functions
+unit,sl7IabghdxfoS9yuKX/dLgRCIZfVrkT6fO1pbXV30cI=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,24,Factorisation
+unit,t28teuC5ahPcOEtWJFv3k5eJZfLOFiyFCDL10Ktqu7Q=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,23,Coordinate Geometry and Linear Graphs
+unit,t9kdlRkqrUJUBY1Ill0Lt1UDYGQG08slJLdM3z+3to4=,R81Sqc8LAYj8amTPwFRvoPgbGpdaZoQLNX0hTg0DMB4=,junior,34,Pair of Linear Equations in Two Variables
+strand,jXSXg7CfDboPEXlnqJTGuQOb0VIgOXCpaU/Sl+/m3n0=,,elementary,16,Data Handling
+unit,DySOBHaLZsTiveM9ydb+JDF/4r3E/4RpX2HijyrUOMQ=,jXSXg7CfDboPEXlnqJTGuQOb0VIgOXCpaU/Sl+/m3n0=,elementary,9,"Bar Graphs, Line Graphs and Pie Charts"
+unit,0lUnR0ktOyp/k6AP59LT6LLleMy0sApv3Wx0P1IBU6c=,jXSXg7CfDboPEXlnqJTGuQOb0VIgOXCpaU/Sl+/m3n0=,elementary,7,Tables
+strand,rzRcsBurW8jbUhivGAdZozPksRAZ5xM898ohJEBg93g=,,senior,1,Coordinate Geometry
+unit,M6LwO5bdmAp0UUI8HyVFE9ATzSpeduEOnKfvx9921Y4=,rzRcsBurW8jbUhivGAdZozPksRAZ5xM898ohJEBg93g=,senior,1,Distance of a Point from a Line
+strand,xYDz4OEv0xsri1IpmXlrgMLJ848rgySf+39xWpq4DBI=,,junior,162,Number System and Ratios
+unit,CFq991L5i+mxDSbH+06jz+rWPf+FmW8hT4uxQjzwxpM=,xYDz4OEv0xsri1IpmXlrgMLJ848rgySf+39xWpq4DBI=,junior,49,"Factors, Multiples and Prime Factorisation"
+unit,hnFTwzVTapuqt9dsYhFFSgSgU0i7cBjbx0itZHp3gXw=,xYDz4OEv0xsri1IpmXlrgMLJ848rgySf+39xWpq4DBI=,junior,26,Square Roots and Pythagoras Theorem
+unit,mS7VsK5w8e8Fw12vi9+tqcFfvw+I2J9+ot6NAMLgGno=,xYDz4OEv0xsri1IpmXlrgMLJ848rgySf+39xWpq4DBI=,junior,34,Ratio and Proportion
+unit,oBYwVLa5y1p8BXITCAGb6mktep09ev+hSPXi7sMX6QU=,xYDz4OEv0xsri1IpmXlrgMLJ848rgySf+39xWpq4DBI=,junior,10,Sequences and Arithmetic Progressions
+unit,/yqeM1FRP1rB9WuQWBkStMqrBQgjEexaeyWIhBC7ov4=,xYDz4OEv0xsri1IpmXlrgMLJ848rgySf+39xWpq4DBI=,junior,43,"Integers, Absolute Value and Exponents"
+strand,1EzKLzTq9Ax8/wlR9cJNrtthvk9lBi/SFdx/4L1PIaE=,,elementary,115,Geometry and Mensuration
+unit,nLqsiSA2CPPgbpIk8GE3OSF94E4F7ogLig3ETQnOw4g=,1EzKLzTq9Ax8/wlR9cJNrtthvk9lBi/SFdx/4L1PIaE=,elementary,78,"Angles, Perimeter and Shapes"
+unit,xJYDWrjKoWhvx5w88UZja7WZgWHm2o9jmUQR8V911qc=,1EzKLzTq9Ax8/wlR9cJNrtthvk9lBi/SFdx/4L1PIaE=,elementary,37,Mensuration: Volume and Surface Area
+strand,2YwsqJH0U7Zguyun1OaStQsIHbUoYvgJNK0QCGC5BQI=,,junior,21,Statistics and Probability
+unit,RaHaiGdqikWWUXScrUcgSP/rjWdSy3i6EZ4p8eAPUYw=,2YwsqJH0U7Zguyun1OaStQsIHbUoYvgJNK0QCGC5BQI=,junior,21,Statistics and Probability
+strand,5Np4fxxPeBgmNpeEOcXqarZIVsOEzZ1fSssL8cytQAc=,,senior,2,Exponents and Powers
+unit,YGQ1eLjWtWHIAkAB6yUTdT2zGIiWF5fEjTY7D5Xy9ms=,5Np4fxxPeBgmNpeEOcXqarZIVsOEzZ1fSssL8cytQAc=,senior,2,Exponents and Powers
+strand,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,,elementary,553,Numbers and Measurement
+unit,Dnl0P09LJllOG2eS2nB9pQax0ZixH7aCXPTKjB6O/dg=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,37,"Speed, Capacity and Quantities"
+unit,ItasYR+er/FlZlRvL66/NB3wY0AvmlrZKoqe4gmPyD0=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,34,Factors and Multiples (HCF and LCM)
+unit,SbjJOr6qtjsiqb5cTT/nQEFCsgNyP8xGaOQS4zHdQ0s=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,6,Volume in Cubic Centimetres
+unit,X5gAB0OLUqA8Rp3qGLuJyf6kyY16/nSreFkh68gpFzc=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,31,Time
+unit,YM8uggtD5HZBGCCzNJLU90fC9C+B8/bZP3x483rb7PI=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,97,Decimals
+unit,a2w4FdOiBsy7t1fsstano3rtWKyay8qPhPd4U6Er7YQ=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,27,Length
+unit,scsWmkZsfmdmD2IzB24sQ1Au1BOXYgQEx9zO3+4glq8=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,146,Whole Numbers: Place Value and Operations
+unit,zM75Dhur9om41RTSUIivWvZ07gckl2Hi0cd3/Kx4sN4=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,132,Fractions and Ratios
+unit,3TpEcN+JUz/mQq8c1Q/Fxn66B9E2Z4mLxjxvFqLRKHo=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,7,"Angles, Squares and Rectangles"
+unit,3fgcSGTzD9uuOjoB5R7onIyqBhvluj0aVuSIpMfqLdQ=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,15,Weight: Kilograms and Grams
+unit,31v13N8GN4hIUpg1IsMv4DVkK8Hlb0XhHnHnBR1Ivcs=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,7,Litres and Millilitres
+unit,8OFhw5s0EmQIKBlKbJL+Dvp+u3ss4rN3foLwLM4xXls=,7f73q332BKPBXaixasa4EkUb+pF6VAsLxNIg4506JJs=,elementary,14,Area

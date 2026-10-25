@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 import torch
 
-from pathtrace import bkt, prereq
-from pathtrace.batching import make_batch
-from pathtrace.config import ModelConfig, TrainConfig
-from pathtrace.rl import RewardTables, RLConfig, finetune, oracle_paths
-from pathtrace.train import train_model
+from learnpath import bkt, prereq
+from learnpath.batching import make_batch
+from learnpath.config import ModelConfig, TrainConfig
+from learnpath.rl import RewardTables, RLConfig, finetune, oracle_paths
+from learnpath.train import train_model
 
 
 def _tables(seed=0, examples=40, n=6, weight=0.2):
@@ -60,7 +60,7 @@ def test_finetune_runs_and_never_returns_a_worse_policy(tiny_processed, setup, b
 
 
 def test_positive_advantage_raises_the_sampled_paths_probability(tiny_processed, setup):
-    from pathtrace.train import load_checkpoint
+    from learnpath.train import load_checkpoint
 
     out, _, _ = setup
     model, _ = load_checkpoint(out / "sup" / "model.pt", torch.device("cpu"))

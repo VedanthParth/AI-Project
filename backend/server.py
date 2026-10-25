@@ -1,17 +1,18 @@
-"""PathTrace demo API: serves the trained pointer network on held-out Junyi students.
+"""Maths Learning Path Recommender demo API: serves the trained pointer network on held-out Junyi students.
 
 Run from the repository root (after `pip install -e ml -r backend/requirements.txt`):
 
     python backend/server.py              # http://localhost:8000
 
-It loads the app bundle (default `backend/bundle`, or $PATHTRACE_BUNDLE) written by
-`pathtrace export`, and serves the built frontend from `frontend/dist` when it exists.
+It loads the app bundle (default `backend/bundle`, or $LEARNPATH_BUNDLE) written by
+`learnpath export`, and serves the built frontend from `frontend/dist` when it exists.
 Set GEMINI_API_KEY (in the environment or `backend/.env`) to let the tutor call Gemini;
 without it the tutor answers from a template built from the same numbers.
 """
 
 from __future__ import annotations
 
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -20,16 +21,32 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from pathtrace.demo import METHODS, Demo, DemoError
+from learnpath.demo import METHODS, Demo, DemoError
+from learnpath.newstudent import NewStudentPlanner
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_BUNDLE = ROOT / "bundle"
 DEFAULT_FRONTEND = ROOT.parent / "frontend" / "dist"
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+# Junyi's school stages (Taiwan's grades 1-6, 7-9 and 10-12) named by the Indian classes they roughly match.
+CLASSES = {"elementary": "Class 1–6", "junior": "Class 7–9", "senior": "Class 10–12"}
 
 
 class SimulateRequest(BaseModel):
     paths: dict[str, list[int]] = Field(description="method name -> candidate slots, in order")
+
+
+class PracticeItem(BaseModel):
+    concept: int
+    correct: bool
+
+
+class PlanRequest(BaseModel):
+    stage: str = Field(pattern="^(elementary|junior)$")
+    strands: dict[int, str] = Field(default_factory=dict, description="strand id -> strong | okay | weak")
+    units: dict[int, str] = Field(default_factory=dict, description="unit id -> good | bad")
+    current: list[int] = Field(default_factory=list, description="exercises finished last, oldest first")
+    practice: list[PracticeItem] = Field(default_factory=list, description="attempts recorded in the app, in order")
 
 
 class TutorRequest(BaseModel):
@@ -76,8 +93,8 @@ def concept_template(demo: Demo, concept_id: int) -> str:
     c = demo.concepts[concept_id]
     parents = [demo.concepts[p]["name"] for p in demo.parents[concept_id]]
     children = [demo.concepts[d]["name"] for d in demo.children[concept_id]]
-    stage = f" It belongs to the {c['stage']} stage." if c.get("stage") else ""
-    text = f"{c['name']} is a Junyi Academy math exercise.{stage}"
+    classes = f" It is taught in {CLASSES[c['stage']]}." if c.get("stage") in CLASSES else ""
+    text = f"{c['name']} is a maths exercise from Junyi Academy.{classes}"
     if parents:
         text += " Students usually practise it after: " + ", ".join(parents[:5]) + "."
     if children:
@@ -95,17 +112,19 @@ def ask_gemini(api_key: str, prompt: str) -> str:
 def tutor_prompt(demo: Demo, example: int, req: TutorRequest) -> str:
     if req.kind == "why":
         return (
-            "You are a tutor explaining an AI system's recommendation to a student and their teacher. "
-            "Using only the facts below, explain in at most 4 short sentences why this 3-concept path suits the "
-            "student now, and how it differs from the baseline. Don't invent numbers.\n\n"
+            "You are a maths teacher in an Indian school explaining an AI system's recommendation to a student and "
+            "their parents. Using only the facts below, explain in at most 4 short sentences why this 3-topic path "
+            "suits the student now, and how it differs from the baseline. Don't invent numbers. Write in Indian "
+            "English.\n\n"
             + demo.tutor_context(example)
         )
     c = demo.concepts[req.concept_id]
     parents = ", ".join(demo.concepts[p]["name"] for p in demo.parents[req.concept_id]) or "none recorded"
     return (
-        f"You are a friendly math tutor. Explain the exercise topic \"{c['name']}\" "
-        f"({c.get('stage') or 'school'} level) in 3 short paragraphs for a student about to practise it, with one "
-        f"worked example. Topics students usually learn first: {parents}."
+        f"You are a friendly maths teacher in an Indian school. Explain the topic \"{c['name']}\" "
+        f"({CLASSES.get(c.get('stage'), 'school level')}) in 3 short paragraphs for a student about to practise it, "
+        "with one worked example set in an everyday Indian context, such as rupees at a shop, a cricket score or a "
+        f"train journey. Use Indian English spelling and metric units. Topics students usually learn first: {parents}."
     )
 
 
@@ -114,9 +133,15 @@ def tutor_prompt(demo: Demo, example: int, req: TutorRequest) -> str:
 
 def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path | None = DEFAULT_FRONTEND) -> FastAPI:
     demo = Demo(bundle_dir)
-    app = FastAPI(title="PathTrace demo API", version="1.0")
+    app = FastAPI(title="Maths Learning Path Recommender demo API", version="1.0")
     example = lru_cache(maxsize=512)(demo.example)
     students = demo.students()
+    try:
+        planner = NewStudentPlanner(demo, bundle_dir)
+    except DemoError:
+        planner = None  # an older bundle without topics.json: no New student page
+    results_dir = Path(bundle_dir) / "results"
+    results = {f.stem: json.loads(f.read_text(encoding="utf-8")) for f in sorted(results_dir.glob("*.json"))} if results_dir.is_dir() else {}
 
     def guard(fn, *args):
         try:
@@ -154,6 +179,23 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
     def simulate_paths(example_id: int, req: SimulateRequest) -> dict:
         return guard(demo.simulate, example_id, req.paths)
 
+    @app.get("/api/questionnaire")
+    def questionnaire() -> dict:
+        if planner is None:
+            raise HTTPException(status_code=404, detail="this bundle has no topics.json; re-export it with --content")
+        return planner.questionnaire()
+
+    @app.post("/api/plan")
+    def plan(req: PlanRequest) -> dict:
+        if planner is None:
+            raise HTTPException(status_code=404, detail="this bundle has no topics.json; re-export it with --content")
+        practice = [(p.concept, p.correct) for p in req.practice]
+        return guard(planner.plan, req.stage, req.strands, req.units, req.current, practice)
+
+    @app.get("/api/results")
+    def get_results() -> dict:
+        return results
+
     @app.get("/api/examples/{example_id}/graph")
     def graph(example_id: int) -> dict:
         return guard(demo.neighbourhood, example_id)
@@ -181,9 +223,9 @@ def main() -> None:
     import uvicorn
 
     load_env_file(ROOT / ".env")
-    bundle = os.environ.get("PATHTRACE_BUNDLE", str(DEFAULT_BUNDLE))
+    bundle = os.environ.get("LEARNPATH_BUNDLE", str(DEFAULT_BUNDLE))
     port = int(os.environ.get("PORT", "8000"))
-    print(f"PathTrace demo: bundle {bundle}, http://localhost:{port}")
+    print(f"Maths Learning Path Recommender demo: bundle {bundle}, http://localhost:{port}")
     uvicorn.run(create_app(bundle), host=os.environ.get("HOST", "127.0.0.1"), port=port)
 
 

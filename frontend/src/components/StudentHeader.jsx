@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { pct } from '../api';
+import { fmtDate, fmtNum, pct, stageLabel } from '../api';
 
 function Stat({ label, value }) {
   return (
@@ -24,13 +24,13 @@ export default function StudentHeader({ summary, detail, exampleId, onSelectExam
         <div>
           <h1 className="text-xl font-semibold m-0">{summary.label}</h1>
           <p className="card-sub">
-            Active {summary.first_date} to {summary.last_date}
-            {summary.stage ? ` · mostly ${summary.stage} concepts` : ''}
+            Active {fmtDate(summary.first_date)} to {fmtDate(summary.last_date)}
+            {summary.stage ? ` · mostly ${stageLabel(summary.stage)} topics` : ''}
           </p>
         </div>
         <div className="flex gap-6">
-          <Stat label="Attempts" value={summary.attempts.toLocaleString()} />
-          <Stat label="Concepts" value={summary.concepts} />
+          <Stat label="Attempts" value={fmtNum(summary.attempts)} />
+          <Stat label="Topics" value={summary.concepts} />
           <Stat label="Correct" value={pct(summary.accuracy)} />
         </div>
       </div>
@@ -38,7 +38,7 @@ export default function StudentHeader({ summary, detail, exampleId, onSelectExam
         <div className="flex items-center justify-between gap-2 mb-2">
           <div>
             <div className="font-medium text-sm">Choose a moment in this student's history</div>
-            <div className="muted text-xs">Each moment is a point where the student went on to start new concepts; the model only sees what came before it.</div>
+            <div className="muted text-xs">Each moment is a point where the student went on to start new topics; the model only sees what came before it.</div>
           </div>
           <div className="flex gap-1 shrink-0">
             <button type="button" className="btn" onClick={() => go(-1)} disabled={index <= 0} aria-label="Previous moment">
@@ -55,9 +55,9 @@ export default function StudentHeader({ summary, detail, exampleId, onSelectExam
             <button key={e.id} type="button" role="tab" aria-selected={e.id === exampleId}
               className="btn num" onClick={() => onSelectExample(e.id)}
               style={e.id === exampleId ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' } : undefined}
-              title={`After ${e.cut} attempts, ${e.date}`}>
+              title={`After ${fmtNum(e.cut)} attempts, ${fmtDate(e.date)}`}>
               <span className="text-xs">#{i + 1}</span>
-              <span className="text-xs opacity-80">{e.date}</span>
+              <span className="text-xs opacity-80">{fmtDate(e.date)}</span>
             </button>
           ))}
         </div>

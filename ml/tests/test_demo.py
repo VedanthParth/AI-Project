@@ -3,15 +3,15 @@ import pandas as pd
 import pytest
 import torch
 
-from pathtrace.baselines import MarkovBaseline
-from pathtrace.batching import make_batch
-from pathtrace.config import DataConfig, ModelConfig, TrainConfig
-from pathtrace.demo import Demo, DemoError
-from pathtrace.dkt import DKTConfig
-from pathtrace.export import export_bundle
-from pathtrace.grid import run_grid
-from pathtrace.preprocess import load_processed, prepare
-from pathtrace.train import load_checkpoint
+from learnpath.baselines import MarkovBaseline
+from learnpath.batching import make_batch
+from learnpath.config import DataConfig, ModelConfig, TrainConfig
+from learnpath.demo import Demo, DemoError
+from learnpath.dkt import DKTConfig
+from learnpath.export import export_bundle
+from learnpath.grid import run_grid
+from learnpath.preprocess import load_processed, prepare
+from learnpath.train import load_checkpoint
 
 
 @pytest.fixture(scope="module")

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pathtrace import metrics
+from learnpath import metrics
 
 
 def test_chance_matches_paper_closed_forms():
@@ -55,6 +55,19 @@ def test_bootstrap_interval_contains_mean():
     values = {"x": np.random.default_rng(1).random(500)}
     summary = metrics.summarize(values, n_boot=500, seed=0)["x"]
     assert summary["ci_low"] < summary["mean"] < summary["ci_high"]
+
+
+def test_student_bootstrap_is_wider_when_a_students_examples_agree():
+    rng = np.random.default_rng(0)
+    student = np.repeat(np.arange(100), 10)
+    values = np.repeat(rng.random(100), 10)  # each student's 10 examples share one value
+    flat = metrics.summarize({"v": values}, 500)["v"]
+    grouped = metrics.summarize({"v": values}, 500, groups=student)["v"]
+    assert grouped["mean"] == flat["mean"]
+    assert grouped["ci_high"] - grouped["ci_low"] > 2 * (flat["ci_high"] - flat["ci_low"])
+    # With one example per student the two agree exactly.
+    singles = rng.random(300)
+    assert metrics.summarize({"v": singles}, 200, groups=np.arange(300)) == metrics.summarize({"v": singles}, 200)
 
 
 def test_auc_matches_pairwise_definition():

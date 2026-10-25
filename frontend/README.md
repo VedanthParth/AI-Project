@@ -1,6 +1,6 @@
-# PathTrace frontend
+# Maths Learning Path Recommender frontend
 
-React + Vite + Tailwind app for the PathTrace demo. See the [root README](../README.md) to
+React + Vite + Tailwind app for the Maths Learning Path Recommender demo. See the [root README](../README.md) to
 run it with the API.
 
 - `npm run build`: production build into `dist/`, which `backend/server.py` serves.

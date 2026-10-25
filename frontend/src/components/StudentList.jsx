@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { pct } from '../api';
+import { fmtNum, pct, stageLabel } from '../api';
 
 const SORTS = {
   attempts: { label: 'Attempts', fn: (a, b) => b.attempts - a.attempts },
@@ -35,7 +35,7 @@ export default function StudentList({ students, selected, onSelect }) {
       <label className="relative block">
         <span className="sr-only">Search students</span>
         <Search size={14} className="absolute left-2.5 top-2.5 muted" aria-hidden />
-        <input className="input" style={{ paddingLeft: 28 }} placeholder="Search, e.g. student-042" value={query}
+        <input className="input" style={{ paddingLeft: 28 }} placeholder="Search, e.g. Roll No. 042" value={query}
           onChange={(e) => setQuery(e.target.value)} />
       </label>
       <div className="flex gap-2">
@@ -43,8 +43,8 @@ export default function StudentList({ students, selected, onSelect }) {
           {Object.entries(SORTS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
         </select>
         <select className="input" value={stage} onChange={(e) => setStage(e.target.value)} aria-label="Filter by stage">
-          <option value="">All stages</option>
-          {stages.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
+          <option value="">All classes</option>
+          {stages.map((s) => <option key={s} value={s}>{stageLabel(s)}</option>)}
         </select>
       </div>
       <div ref={listRef} className="overflow-y-auto -mx-2 px-2 max-h-72 lg:max-h-none" role="list">
@@ -56,7 +56,7 @@ export default function StudentList({ students, selected, onSelect }) {
               <span className="muted num text-xs">{s.examples} moments</span>
             </div>
             <div className="muted text-xs num">
-              {s.attempts.toLocaleString()} attempts · {s.concepts} concepts · {pct(s.accuracy)} correct
+              {fmtNum(s.attempts)} attempts · {s.concepts} topics · {pct(s.accuracy)} correct
             </div>
           </button>
         ))}

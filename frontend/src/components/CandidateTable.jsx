@@ -42,7 +42,7 @@ export default function CandidateTable({ example }) {
       <div>
         <h2 className="card-title">All {example.candidates.length} candidates and the model's attention</h2>
         <p className="card-sub">
-          Darker cells got more of the decoder's attention at that step; outlined cells are its picks. Concepts picked
+          Darker cells got more of the decoder's attention at that step; outlined cells are its picks. Topics picked
           earlier are masked at later steps.
         </p>
       </div>
@@ -50,7 +50,7 @@ export default function CandidateTable({ example }) {
         <table className="table">
           <thead>
             <tr>
-              <th scope="col">Concept</th>
+              <th scope="col">Topic</th>
               <th scope="col" className="text-center">Step 1</th>
               <th scope="col" className="text-center">Step 2</th>
               <th scope="col" className="text-center">Step 3</th>

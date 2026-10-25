@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
-import { pct } from '../api';
+import { pct, stageLabel } from '../api';
 
 const ORDINAL = ['first', 'second', 'third'];
 
@@ -8,14 +8,14 @@ function Outcome({ cand, firstGroup }) {
     return (
       <div className="flex items-center gap-1.5 text-xs">
         <XCircle size={14} className="bad shrink-0" aria-hidden />
-        <span>Not among the student's next 3 new concepts</span>
+        <span>Not among the student's next 3 new topics</span>
       </div>
     );
   }
   const first = cand.target_rank <= firstGroup;
   const text = first
-    ? `The student started this next${firstGroup > 1 ? `, in the same session as ${firstGroup - 1} other new concept${firstGroup > 2 ? 's' : ''}` : ''}`
-    : `The student started this ${ORDINAL[cand.target_rank - 1]} of their next 3 new concepts`;
+    ? `The student started this next${firstGroup > 1 ? `, in the same session as ${firstGroup - 1} other new topic${firstGroup > 2 ? 's' : ''}` : ''}`
+    : `The student started this ${ORDINAL[cand.target_rank - 1]} of their next 3 new topics`;
   return (
     <div className="flex items-center gap-1.5 text-xs">
       <CheckCircle2 size={14} className="good shrink-0" aria-hidden />
@@ -60,8 +60,8 @@ export default function PathCard({ example }) {
         <div>
           <h2 className="card-title">Recommended path</h2>
           <p className="card-sub">
-            The pointer network picks 3 concepts in order from {example.candidates.length} candidates. Attention is the
-            share of the model's probability on that concept at that step.
+            The pointer network picks 3 topics in order from {example.candidates.length} candidates. Attention is the
+            share of the model's probability on that topic at that step.
           </p>
         </div>
         <span className="chip num">{path.hits}/3 match what the student did</span>
@@ -79,7 +79,7 @@ export default function PathCard({ example }) {
                 <span className="font-medium leading-snug">{cand.name}</span>
               </div>
               <div className="flex flex-wrap gap-1">
-                {cand.stage && <span className="chip">{cand.stage}</span>}
+                {cand.stage && <span className="chip">{stageLabel(cand.stage)}</span>}
                 {cand.level && <span className="chip">{cand.level}</span>}
               </div>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1 m-0 text-xs">

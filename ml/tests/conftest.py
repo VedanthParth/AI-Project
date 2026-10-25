@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 import torch
 
-from pathtrace.config import DataConfig
-from pathtrace.preprocess import Processed, prepare
-from pathtrace.synthetic import write_log
+from learnpath.config import DataConfig
+from learnpath.preprocess import Processed, prepare
+from learnpath.synthetic import write_log
 
 # The test models are tiny; one thread avoids oversubscription when other jobs share the CPU.
 torch.set_num_threads(1)
