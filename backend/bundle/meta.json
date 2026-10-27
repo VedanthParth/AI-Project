@@ -1,9 +1,9 @@
 {
-  "created": "2026-10-25",
+  "created": "2026-10-27",
   "source": {
     "data": "junyi",
     "runs": "junyi",
-    "checkpoint": "pointer-seed0",
+    "checkpoint": "rl-seed0",
     "split": "test"
   },
   "dataset": {
@@ -20,38 +20,6 @@
   "train_students": 50931,
   "metrics": {
     "pointer": {
-      "precision": {
-        "mean": 0.8716,
-        "ci_low": 0.87,
-        "ci_high": 0.8733
-      },
-      "recall": {
-        "mean": 0.8716,
-        "ci_low": 0.87,
-        "ci_high": 0.8733
-      },
-      "hit_rate": {
-        "mean": 0.9832,
-        "ci_low": 0.9823,
-        "ci_high": 0.9842
-      },
-      "ndcg": {
-        "mean": 0.885,
-        "ci_low": 0.8836,
-        "ci_high": 0.8867
-      },
-      "mrr": {
-        "mean": 0.95,
-        "ci_low": 0.9487,
-        "ci_high": 0.9513
-      },
-      "first_step": {
-        "mean": 0.726,
-        "ci_low": 0.7226,
-        "ci_high": 0.7291
-      }
-    },
-    "rl": {
       "precision": {
         "mean": 0.8608,
         "ci_low": 0.8591,
@@ -81,6 +49,38 @@
         "mean": 0.7224,
         "ci_low": 0.7193,
         "ci_high": 0.7257
+      }
+    },
+    "supervised": {
+      "precision": {
+        "mean": 0.8716,
+        "ci_low": 0.87,
+        "ci_high": 0.8733
+      },
+      "recall": {
+        "mean": 0.8716,
+        "ci_low": 0.87,
+        "ci_high": 0.8733
+      },
+      "hit_rate": {
+        "mean": 0.9832,
+        "ci_low": 0.9823,
+        "ci_high": 0.9842
+      },
+      "ndcg": {
+        "mean": 0.885,
+        "ci_low": 0.8836,
+        "ci_high": 0.8867
+      },
+      "mrr": {
+        "mean": 0.95,
+        "ci_low": 0.9487,
+        "ci_high": 0.9513
+      },
+      "first_step": {
+        "mean": 0.726,
+        "ci_low": 0.7226,
+        "ci_high": 0.7291
       }
     },
     "random": {
@@ -217,7 +217,7 @@
     "checkpoint": "rl-seed0",
     "violations_per_path": 0.37042595573989684
   },
-  "shortlist_model": "pointer-hard50-seed0",
+  "shortlist_model": "rl-hard50-seed0",
   "results": [
     "main.json",
     "catalogue_test_20.json",

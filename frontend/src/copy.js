@@ -10,13 +10,8 @@ export const APP = {
 export const METHODS = {
   pointer: {
     name: 'Our recommendation',
-    short: 'Like students similar to you',
-    what: 'Our recommender reads everything we know about the student and picks the three topics that students in a similar place most often went on to, in a sensible order.',
-  },
-  rl: {
-    name: 'Learning-focused version',
-    short: 'Focus on learning more',
-    what: 'The same recommender after extra practice in a simulated classroom, where it was rewarded for topics that should help more and for not skipping building blocks.',
+    short: 'Our recommendation',
+    what: 'Our recommender reads everything we know about the student and picks three topics that students in a similar place went on to. It then had extra practice in a simulated classroom, where it was rewarded for topics that should help more and for not skipping building blocks.',
   },
   markov: {
     name: 'The usual next step',
@@ -77,7 +72,7 @@ export const HOW_IT_WORKS = [
 // Technical names, for the panels that explain how the app is built.
 export const TECHNICAL = [
   ['Recommender', 'A pointer network: a GRU reads the attempt history, a Transformer compares the shortlisted topics, and an LSTM decoder points at one topic per step. Trained on 72,758 Junyi Academy students.'],
-  ['Learning-focused version', 'The same network fine-tuned with reinforcement learning (REINFORCE with a greedy baseline) against a BKT reward minus a penalty for skipped prerequisites.'],
+  ['Two training stages', 'First supervised on the topics students really started next, then fine-tuned with reinforcement learning (REINFORCE with a greedy baseline and a supervised anchor) against a BKT reward minus a penalty for skipped prerequisites.'],
   ['Estimated understanding', 'Bayesian Knowledge Tracing (BKT): a per-topic model of the chance a student has mastered it, updated after every answer.'],
   ['Building blocks', 'Prerequisites inferred from the order in which training students first attempted topics.'],
   ['Shortlist and "the usual next step"', 'A Markov model of which topic students start after their last three, fitted on training students.'],

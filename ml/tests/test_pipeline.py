@@ -55,9 +55,9 @@ def test_run_all_finishes_the_main_dataset_then_resumes_without_redoing_work(tin
     assert first.index("===== junyi: app bundle") < first.index("===== junyi-paper: experiment grid")
     assert (tmp_path / "results" / "junyi" / "main_table.md").exists()
     assert (tmp_path / "results" / "junyi-paper" / "main_table.md").exists()
-    assert load_json(tmp_path / "bundle" / "meta.json")["source"]["checkpoint"] == "pointer-seed0"
+    assert load_json(tmp_path / "bundle" / "meta.json")["source"]["checkpoint"] == "rl-seed0"
     assert load_json(tmp_path / "data" / "processed" / "junyi-paper" / "meta.json")["data_config"]["windows"] == "last"
-    assert not (tmp_path / "runs" / "junyi-paper" / "rl-seed0").exists()
+    assert (tmp_path / "runs" / "junyi-paper" / "rl-seed0" / "metrics.json").exists()  # RL is never skipped
 
     second: list[str] = []
     run_all(tmp_path, log=second.append, **kwargs)

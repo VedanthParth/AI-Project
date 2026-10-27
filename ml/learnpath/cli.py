@@ -225,7 +225,6 @@ def cmd_grid(args: argparse.Namespace) -> None:
         content=args.content,
         model_cfg=dataclass_from_args(ModelConfig, args),
         train_cfg=dataclass_from_args(TrainConfig, args),
-        rl=not args.no_rl,
         sensitivity=not args.no_sensitivity,
         gain=not args.no_gain,
         gain_max_examples=args.gain_max_examples,
@@ -348,7 +347,7 @@ def main(argv: list[str] | None = None) -> None:
                    help="the first is the main dataset; the others are optional extra grids")
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4],
                    help="seeds for the main dataset; the extra grids use at most the first 3")
-    p.add_argument("--batch-size", type=int, default=256, help="256 matches the Colab runs")
+    p.add_argument("--batch-size", type=int, default=256, help="256 keeps the GPU busy; the reported results use it")
     p.add_argument("--device", default="auto", help="'auto', 'cpu' or 'cuda'")
     p.add_argument("--bundle", type=Path, default=None, help="app bundle directory (default: <root>/bundle)")
     p.set_defaults(func=cmd_all)
@@ -445,8 +444,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     p.add_argument("--variants", nargs="+", default=list(VARIANTS), choices=list(VARIANTS))
     p.add_argument("--content", type=Path, default=None, help="Info_Content.csv for the prerequisite-graph checks")
-    p.add_argument("--no-rl", action="store_true", help="skip RL fine-tuning")
-    p.add_argument("--no-sensitivity", action="store_true", help="skip the seed-0 RL sensitivity runs")
+    p.add_argument("--no-sensitivity", action="store_true", help="skip the seed-0 RL sensitivity runs (RL itself always runs)")
     p.add_argument("--no-gain", action="store_true", help="skip the DKT learning-gain evaluation")
     p.add_argument("--gain-max-examples", type=int, default=20_000, help="test examples scored for learning gain")
     add_dataclass_args(p, ModelConfig)
@@ -465,7 +463,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--data", type=Path, required=True, help="processed data directory")
     p.add_argument("--runs", type=Path, required=True, help="runs directory with bkt/, prereq/, dkt/ and the checkpoint")
     p.add_argument("--out", type=Path, required=True, help="bundle directory (replaced if it exists)")
-    p.add_argument("--checkpoint", default="pointer-seed0", help="run directory under --runs holding model.pt")
+    p.add_argument("--checkpoint", default="rl-seed0",
+                   help="RL-fine-tuned run directory under --runs whose model.pt the app serves")
     p.add_argument("--names", type=Path, default=Path(__file__).resolve().parents[1] / "resources" / "junyi_concepts_en.csv",
                    help="CSV with ucid, name_en and level columns")
     p.add_argument("--content", type=Path, default=None, help="Junyi Info_Content.csv, for learning stage and difficulty")
@@ -474,7 +473,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--results", type=Path, default=None, help="the report folder for this dataset (its results.json)")
     p.add_argument("--shortlist-model", type=Path, default=None,
-                   help="model.pt trained with --negatives markov, for recommending from the whole catalogue")
+                   help="RL-fine-tuned model.pt of a model trained with --negatives markov, for recommending from the whole catalogue")
     p.set_defaults(func=cmd_export)
 
     p = sub.add_parser("catalogue", help="recommend from every unseen concept: shortlist, then pointer network")

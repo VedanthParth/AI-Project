@@ -56,22 +56,7 @@ function HowItWorksStrip() {
   );
 }
 
-function StyleToggle({ plan, style, onChange }) {
-  if (!plan.paths.rl) return null;
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="inline-flex rounded-lg overflow-hidden self-start" style={{ border: '1px solid var(--border)' }} role="radiogroup" aria-label="Kind of plan">
-        {['pointer', 'rl'].map((key) => (
-          <button key={key} type="button" role="radio" aria-checked={style === key} onClick={() => onChange(key)}
-            className="px-4 py-2 text-sm" style={style === key ? { background: 'var(--accent)', color: '#fff' } : { background: 'var(--surface)' }}>
-            {METHODS[key].short}
-          </button>
-        ))}
-      </div>
-      <p className="m-0 muted text-sm" style={{ maxWidth: '68ch' }}>{METHODS[style].what}</p>
-    </div>
-  );
-}
+const STYLE = 'pointer'; // the recommender: the pointer network after its RL fine-tuning stage
 
 function changes(plan, prev, style) {
   if (!prev?.paths[style]) return null;
@@ -229,7 +214,6 @@ export default function Plan({ tutorMode }) {
   const [latest, setPlan] = useState(null);
   const [prev, setPrev] = useState(null);
   const [lastAction, setLastAction] = useState(null);
-  const [style, setStyle] = useState('pointer');
   const [error, setError] = useState(null);
   const request = useRef(0);
   const planRef = useRef(null);
@@ -256,7 +240,6 @@ export default function Plan({ tutorMode }) {
   }, [answers]);
 
   const plan = hasSignal(answers) ? latest : null;
-  const shownStyle = plan?.paths[style] ? style : 'pointer';
   const change = (next, action) => {
     setLastAction(action);
     setAnswers(next);
@@ -298,8 +281,8 @@ export default function Plan({ tutorMode }) {
         <>
           <Section id="plan" eyebrow="Your plan" title="Your next three topics"
             lead="Do them in this order. Each card says why it is there. Tell us how each one goes and the plan adjusts.">
-            <StyleToggle plan={plan} style={shownStyle} onChange={setStyle} />
-            <TopicCards plan={plan} prev={prev} style={shownStyle} lastAction={lastAction}
+            <p className="m-0 muted text-sm" style={{ maxWidth: '68ch' }}>{METHODS.pointer.what}</p>
+            <TopicCards plan={plan} prev={prev} style={STYLE} lastAction={lastAction}
               onPractice={(c, correct) => change(
                 { ...answers, practice: [...answers.practice, { concept: c.id, correct }] },
                 correct ? `You got “${c.name}”` : `You found “${c.name}” hard`,
@@ -308,17 +291,17 @@ export default function Plan({ tutorMode }) {
 
           <Section id="why" title="Why these three?"
             lead="Every suggestion balances five things. The further a point reaches out, the stronger that reason is for this topic.">
-            <WhyTopic key={plan.paths[shownStyle].concepts.map((c) => c.id).join()} path={plan.paths[shownStyle]} />
+            <WhyTopic key={plan.paths[STYLE].concepts.map((c) => c.id).join()} path={plan.paths[STYLE]} />
           </Section>
 
           <Section id="compare" title="How your plan compares with simpler ways of choosing"
             lead="Two simple ways to pick topics, next to ours, for the same answers. A good plan reaches out on every side, not just one.">
-            <Compare paths={plan.paths} keys={[shownStyle, 'markov', 'popularity']} axisKeys={PLAN_AXES} />
+            <Compare paths={plan.paths} keys={[STYLE, 'markov', 'popularity']} axisKeys={PLAN_AXES} />
           </Section>
 
           <Section id="progress" title="How you might progress"
             lead="A separate program that imitates a student predicts how your scores on nearby topics would change while you practise each plan, three questions per topic.">
-            <Progress plan={plan} style={shownStyle} />
+            <Progress plan={plan} style={STYLE} />
           </Section>
 
           <Section id="strengths" title="Your strengths"
@@ -327,11 +310,11 @@ export default function Plan({ tutorMode }) {
           </Section>
 
           <Section id="tutor" title="Ask the tutor" lead="Get your plan explained in plain words, or learn about one of its topics with a worked example.">
-            <Tutor mode={tutorMode} topics={plan.paths[shownStyle].concepts}
-              ask={(body) => api.explain({ ...answers, ...body, style: shownStyle })} />
+            <Tutor mode={tutorMode} topics={plan.paths[STYLE].concepts}
+              ask={(body) => api.explain({ ...answers, ...body })} />
           </Section>
 
-          <Technical plan={plan} style={shownStyle} />
+          <Technical plan={plan} style={STYLE} />
           {answers.practice.length > 0 && (
             <button type="button" className="btn self-start" onClick={() => change({ ...answers, practice: [] }, 'You cleared your practice')}>
               <RotateCcw size={14} aria-hidden /> Clear my practice

@@ -11,8 +11,8 @@ how the recommendation changes:
 3. eligible concepts: the stage's concepts not in the history;
 4. shortlist: the Markov scores of every eligible concept (the same scorer as
    ``learnpath catalogue``), top N;
-5. the pointer network orders the shortlist step by step (its attention over
-   the shortlist at each step), and so does the RL-fine-tuned policy;
+5. the recommender (a pointer network after RL fine-tuning) orders the
+   shortlist step by step (its attention over the shortlist at each step);
 6. each path's expected BKT gain, inferred prerequisites it skips, and a DKT
    simulation of practising it;
 7. a review list, by rule rather than model: concepts already worked on whose
@@ -69,9 +69,6 @@ class NewStudentPlanner:
             model, ckpt = load_checkpoint(root / "shortlist_model.pt", demo.device)
             self.models["pointer"] = (model, ckpt["train_config"]["max_history"], demo.meta.get("shortlist_model") or "shortlist model")
             self.shortlist_size = int(ckpt["data_config"]["num_candidates"])
-        if (root / "rl.pt").exists():
-            model, ckpt = load_checkpoint(root / "rl.pt", demo.device)
-            self.models["rl"] = (model, ckpt["train_config"]["max_history"], (demo.meta.get("rl") or {}).get("checkpoint", "rl"))
 
     # ------------------------------------------------------------------ questionnaire
 
@@ -162,7 +159,7 @@ class NewStudentPlanner:
         gain = explain.ranked(expected_gain, options)
         seen = set(concepts.tolist())
 
-        # Four ways of choosing three topics: the two models order the shortlist; the usual next
+        # Three ways of choosing three topics: the recommender orders the shortlist; the usual next
         # step is the shortlist's top three; the most common topics ignore the student entirely.
         ids = {
             "markov": shortlist[: demo.k].tolist(),
@@ -280,7 +277,7 @@ class NewStudentPlanner:
             "simulation": simulation,
         }
 
-    def facts(self, plan: dict, style: str = "pointer") -> str:
+    def facts(self, plan: dict) -> str:
         """Plain-text facts about a plan for the tutor prompt (no names or other identifiers)."""
         confident = [u["name"] for u in plan["units"] if u["mark"] == GOOD]
         needs_help = [u["name"] for u in plan["units"] if u["mark"] == BAD]
@@ -293,7 +290,7 @@ class NewStudentPlanner:
         if last:
             lines.append("Exercises the student finished most recently: " + ", ".join(last) + ".")
         lines.append("The recommended next three topics, in order, each with the reason the app shows:")
-        for step, item in enumerate(plan["paths"][style]["concepts"]):
+        for step, item in enumerate(plan["paths"]["pointer"]["concepts"]):
             lines.append(f"  {step + 1}. {item['name']} ({item['unit']}): {item['reason']}")
         usual = ", ".join(c["name"] for c in plan["paths"]["markov"]["concepts"])
         lines.append(f"What most students did after the same recent topics: {usual}.")

@@ -29,7 +29,7 @@ def bundle(tmp_path_factory):
         model_cfg=ModelConfig(embed_dim=8, hidden_dim=8, ff_dim=16),
         train_cfg=TrainConfig(max_epochs=1, bootstrap=0, max_history=20, batch_size=32),
         dkt_cfg=DKTConfig(hidden_dim=8, embed_dim=8, max_epochs=1),
-        rl=False,
+        sensitivity=False,
         gain=False,
         log=lambda _: None,
     )

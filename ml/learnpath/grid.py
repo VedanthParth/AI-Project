@@ -7,14 +7,14 @@ Layout under ``runs_dir``:
     pointer-seed{s}/                 supervised pointer network
     pointer-nokt-seed{s}/            ablation: no knowledge-tracing head
     pointer-noattn-seed{s}/          ablation: no candidate Transformer
-    rl-seed{s}/                      RL fine-tuning of pointer-seed{s}
+    rl-seed{s}/                      RL fine-tuning of pointer-seed{s}: always run, it is the model the app serves
     rl-sup0-seed0/ rl-sup1-seed0/    sensitivity: supervised weight 0 and 1
     rl-ema-seed0/                    sensitivity: moving-average baseline
     gain_test.json                   DKT learning gain of every method
 
 Each step writes its marker file (``metrics.json``, ``*_summary.json``, ...)
 last, so a marker on disk means that step finished. Rerunning the same
-command after an interruption (a Colab timeout, say) picks up where it
+command after an interruption (a crash or a restart, say) picks up where it
 stopped.
 """
 
@@ -52,7 +52,6 @@ def run_grid(
     model_cfg: ModelConfig | None = None,
     train_cfg: TrainConfig | None = None,
     dkt_cfg: DKTConfig | None = None,
-    rl: bool = True,
     sensitivity: bool = True,
     gain: bool = True,
     gain_split: str = "test",
@@ -111,27 +110,24 @@ def run_grid(
             cfg_t = dataclasses.replace(train_cfg, seed=seed)
             step(out.name, out / "metrics.json", lambda o=out, m=cfg_m, t=cfg_t: train_model(proc, m, t, o, log=log))
 
-    # RL fine-tuning, then sensitivity runs on seed 0.
-    if rl:
-        params = BKTParams.load(runs / "bkt" / "bkt_params.npz")
-        graph = PrereqGraph.load(runs / "prereq" / "prereq_graph.npz")
-        base_rl = RLConfig(
-            batch_size=train_cfg.batch_size,
-            max_history=train_cfg.max_history,
-            bootstrap=train_cfg.bootstrap,
-            device=train_cfg.device,
-        )
-        jobs = [("rl", seed, {}) for seed in seeds]
-        if sensitivity:
-            jobs += [(name, seeds[0], overrides) for name, overrides in SENSITIVITY.items()]
-        for name, seed, overrides in jobs:
-            out = runs / f"{name}-seed{seed}"
-            checkpoint = runs / f"pointer-seed{seed}" / "model.pt"
-            if not checkpoint.exists():
-                log(f"[skip] {out.name}: needs {checkpoint}")
-                continue
-            cfg = dataclasses.replace(base_rl, seed=seed, **overrides)
-            step(out.name, out / "metrics.json", lambda o=out, c=cfg, ck=checkpoint: finetune(proc, ck, params, graph, c, o, log=log))
+    # RL fine-tuning of every pointer network this call trains (the second training stage, not an
+    # option), then sensitivity runs on seed 0. A call that trains only ablations has none to tune.
+    params = BKTParams.load(runs / "bkt" / "bkt_params.npz")
+    graph = PrereqGraph.load(runs / "prereq" / "prereq_graph.npz")
+    base_rl = RLConfig(
+        batch_size=train_cfg.batch_size,
+        max_history=train_cfg.max_history,
+        bootstrap=train_cfg.bootstrap,
+        device=train_cfg.device,
+    )
+    jobs = [("rl", seed, {}) for seed in seeds] if "pointer" in variants else []
+    if sensitivity and jobs:
+        jobs += [(name, seeds[0], overrides) for name, overrides in SENSITIVITY.items()]
+    for name, seed, overrides in jobs:
+        out = runs / f"{name}-seed{seed}"
+        checkpoint = runs / f"pointer-seed{seed}" / "model.pt"
+        cfg = dataclasses.replace(base_rl, seed=seed, **overrides)
+        step(out.name, out / "metrics.json", lambda o=out, c=cfg, ck=checkpoint: finetune(proc, ck, params, graph, c, o, log=log))
 
     # DKT learning gain of every method found under runs_dir (recomputed each time).
     if gain:

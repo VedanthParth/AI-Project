@@ -83,7 +83,7 @@ def test_plan_explanations_with_and_without_gemini(topics_client, monkeypatch):
     seen = {}
     monkeypatch.setattr(server, "ask_gemini", lambda key, prompt: seen.update(key=key, prompt=prompt) or "explained")
     monkeypatch.setenv("GEMINI_API_KEY", "k")
-    out = topics_client.post("/api/plan/explain", json={**body, "style": "rl"}).json()
+    out = topics_client.post("/api/plan/explain", json=body).json()
     assert out == {"source": "gemini", "model": server.GEMINI_MODEL, "text": "explained"}
     assert "'you'" in seen["prompt"] and "Never use a name" in seen["prompt"] and "Markov" not in seen["prompt"]
     topic = topics_client.post("/api/plan/explain", json={**body, "kind": "concept", "concept_id": 1}).json()

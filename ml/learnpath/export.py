@@ -3,7 +3,8 @@
     bundle/
       data/              a processed dataset holding only the sampled students
                          (``load_processed`` reads it; train and val are empty)
-      model.pt           pointer-network checkpoint
+      model.pt           the served recommender: a pointer network after RL fine-tuning
+      shortlist_model.pt optional: the same for a model trained on Markov-shortlist distractors
       dkt.pt             DKT simulator
       bkt_params.npz     per-concept BKT parameters
       prereq_graph.npz   inferred prerequisite graph
@@ -14,7 +15,8 @@
 
 Every model and table is fitted on the source dataset's train split, and the
 sampled students come from its test split, so the app only shows students that
-no model was trained on.
+no model was trained on. RL fine-tuning is the second training stage, not an
+option: export refuses a recommender checkpoint that did not go through it.
 """
 
 from __future__ import annotations
@@ -113,6 +115,16 @@ def concept_table(concept_names: np.ndarray, popularity: np.ndarray, names_csv: 
     return table
 
 
+def _require_rl(model_pt: Path) -> None:
+    """The app serves only RL-fine-tuned policies; ``finetune`` is what adds ``rl_config``."""
+    import torch
+
+    if not model_pt.exists():
+        raise FileNotFoundError(f"{model_pt} does not exist; run `learnpath finetune` (or the grid) first")
+    if "rl_config" not in torch.load(model_pt, map_location="cpu", weights_only=False):
+        raise ValueError(f"{model_pt} is a supervised checkpoint; the app serves RL-fine-tuned ones (`learnpath finetune`)")
+
+
 def _summary(metrics_split: dict) -> dict:
     return {name: {k: round(v, 4) for k, v in m.items()} for name, m in metrics_split["metrics"].items()}
 
@@ -156,7 +168,7 @@ def export_bundle(
     runs_dir: str | Path,
     out_dir: str | Path,
     *,
-    checkpoint: str = "pointer-seed0",
+    checkpoint: str = "rl-seed0",
     names_csv: str | Path,
     content_csv: str | Path | None = None,
     split: str = "test",
@@ -168,15 +180,18 @@ def export_bundle(
 ) -> dict:
     """Write the app bundle (see the module docstring).
 
-    Optional parts, each added when its input exists: the RL-fine-tuned
-    policy for ``checkpoint`` (``rl.pt``), a model trained on Markov-shortlist
+    ``checkpoint`` and ``shortlist_model`` must be RL-fine-tuned. Optional parts,
+    each added when its input is given: the model trained on Markov-shortlist
     distractors for the new-student page (``shortlist_model.pt``), the topic
     hierarchy (``topics.json``, needs ``content_csv``), and the evaluation
-    outputs for the Results page (``results/``).
+    outputs (``results/``).
     """
     from learnpath.onboarding import curriculum_position
 
     data, runs, out = Path(data_dir), Path(runs_dir), Path(out_dir)
+    _require_rl(runs / checkpoint / "model.pt")
+    if shortlist_model:
+        _require_rl(Path(shortlist_model))
     proc = load_processed(data)
     with_examples = np.unique(proc.examples[split].student)
     rng = np.random.default_rng(seed)
@@ -208,15 +223,12 @@ def export_bundle(
         save_json(topics, out / "topics.json")
     save_json(concepts, out / "concepts.json")
 
-    model_metrics = load_json(runs / checkpoint / "metrics.json")
-    metrics = {"pointer": _summary(model_metrics["splits"][split])}
-    rl_run = runs / checkpoint.replace("pointer", "rl", 1)
-    rl = None
-    if (rl_run / "model.pt").exists() and (rl_run / "metrics.json").exists():
-        shutil.copyfile(rl_run / "model.pt", out / "rl.pt")
-        rl_metrics = load_json(rl_run / "metrics.json")["splits"][split]
-        metrics["rl"] = _summary(rl_metrics)
-        rl = {"checkpoint": rl_run.name, "violations_per_path": rl_metrics["violations_per_path"]}
+    served = load_json(runs / checkpoint / "metrics.json")["splits"][split]
+    metrics = {"pointer": _summary(served)}
+    rl = {"checkpoint": checkpoint, "violations_per_path": served["violations_per_path"]}
+    supervised = runs / checkpoint.replace("rl", "pointer", 1) / "metrics.json"
+    if supervised.exists():  # the first training stage, for comparison
+        metrics["supervised"] = _summary(load_json(supervised)["splits"][split])
     if shortlist_model:
         shutil.copyfile(shortlist_model, out / "shortlist_model.pt")
     results = _copy_results(runs, Path(results_dir) if results_dir else None, out)

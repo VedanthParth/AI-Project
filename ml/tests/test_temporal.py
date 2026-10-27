@@ -54,7 +54,7 @@ def test_training_statistics_see_only_the_training_period(fold):
 def test_grid_runs_on_a_fold_and_reports_new_and_continuing_students(fold, tmp_path):
     proc, _, data_dir = fold
     run_grid(
-        data_dir, tmp_path / "runs", seeds=[0], variants=["pointer"], rl=False, gain=False,
+        data_dir, tmp_path / "runs", seeds=[0], variants=["pointer"], sensitivity=False, gain=False,
         model_cfg=ModelConfig(embed_dim=16, hidden_dim=16, ff_dim=32),
         train_cfg=TrainConfig(max_epochs=1, bootstrap=0, max_history=30, batch_size=32, device="cpu"),
         dkt_cfg=DKTConfig(hidden_dim=16, embed_dim=8, max_epochs=1, device="cpu"), log=lambda _: None,

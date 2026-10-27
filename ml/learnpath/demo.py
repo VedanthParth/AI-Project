@@ -1,7 +1,8 @@
 """The demo app's model layer: answers questions about one held-out example from an app bundle.
 
 An example is one moment in a test student's history (a cut point). For it the
-demo shows the candidate set, the pointer network's path with its attention at
+demo shows the candidate set, the recommender's path (the pointer network after
+its RL fine-tuning stage, ``model.pt``) with its attention at
 each step, the baselines' paths, what the student actually did next, a DKT
 simulation of following each path, and the prerequisite neighbourhood. Every
 number comes from the same code the paper's results use.
@@ -27,7 +28,7 @@ ATTEMPTS = 3  # simulated attempts per path concept, as in the DKT learning-gain
 ROLLOUTS = 32
 METHODS = ("pointer", "markov", "popularity", "bkt_gain")
 METHOD_LABELS = {
-    "pointer": "Pointer network",
+    "pointer": "Pointer network + RL",
     "markov": "Markov",
     "popularity": "Popularity",
     "bkt_gain": "Highest BKT gain",

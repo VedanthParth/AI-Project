@@ -3,6 +3,10 @@
 Learning path recommendation on the Junyi Academy dataset: a GRU student encoder,
 a Transformer encoder over the candidate set, an LSTM pointer decoder and an
 auxiliary knowledge-tracing head (paper Section 4), plus the baselines it must beat.
+It is trained in two stages: supervised on the concepts students really started next, then
+RL fine-tuning against a BKT learning-gain reward minus a penalty for skipped prerequisites.
+The second stage is not optional: the grid always runs it, and the app serves only
+RL-fine-tuned policies (`export` refuses a supervised checkpoint).
 
 Every number reported in the paper should come from these commands.
 
@@ -12,14 +16,13 @@ Every number reported in the paper should come from these commands.
 cd ml
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m pytest          # 97 tests, about 1 minute
+.venv/bin/python -m pytest          # 98 tests, about 1 minute
 ```
 
 Training on the full dataset needs a GPU. On a 4-core CPU the pointer network takes about
-4 ms per training example per epoch, so the full grid runs on Colab: open
-[`notebooks/colab_experiments.ipynb`](notebooks/colab_experiments.ipynb) in Colab with a GPU
-runtime and run all cells. It keeps data and runs on Google Drive and resumes after a
-disconnect.
+4 ms per training example per epoch, so the full grid runs on a local NVIDIA GPU with
+`python -m learnpath all` (see [`RUNNING.md`](../RUNNING.md)). It resumes an interrupted run
+from its last finished epoch.
 
 ## Data
 
@@ -67,7 +70,7 @@ python -m learnpath prereq --data data/processed/junyi --out runs/junyi/prereq \
     --content data/raw/junyi/Info_Content.csv                                      # prerequisite graph
 python -m learnpath dkt --data data/processed/junyi --out runs/junyi/dkt          # held-out evaluator
 
-# 5. RL fine-tuning of a supervised checkpoint against the BKT reward
+# 5. RL fine-tuning of a supervised checkpoint against the BKT reward (the second training stage)
 python -m learnpath finetune --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt \
     --bkt runs/junyi/bkt/bkt_params.npz --prereq runs/junyi/prereq/prereq_graph.npz --out runs/junyi/rl-seed0
 
@@ -78,14 +81,15 @@ python -m learnpath gain --data data/processed/junyi --dkt runs/junyi/dkt/dkt.pt
 # 7. Re-evaluate a checkpoint
 python -m learnpath evaluate --data data/processed/junyi --checkpoint runs/junyi/pointer-seed0/model.pt --split test
 
-# 8. Bundle a checkpoint, its simulators and 300 test students for the app (needs bkt/, prereq/, dkt/)
-python -m learnpath export --data data/processed/junyi --runs runs/junyi --checkpoint pointer-seed0 \
+# 8. Bundle an RL-fine-tuned checkpoint, its simulators and 300 test students for the app (needs bkt/, prereq/, dkt/)
+python -m learnpath export --data data/processed/junyi --runs runs/junyi --checkpoint rl-seed0 \
     --content data/raw/junyi/Info_Content.csv --out ../backend/bundle
 ```
 
 The committed `backend/bundle` was exported from the full-data runs (`learnpath all --seeds 0 1 2`)
-with `pointer-seed0`, its RL policy `rl-seed0`, the realistic-distractor model
-`pointer-hard50-seed0` for the *Plan my next topics* page, and every evaluation JSON
+with `rl-seed0` (RL fine-tuning of `pointer-seed0`) for the *See it on real students* page,
+`rl-hard50-seed0` (RL fine-tuning of the realistic-distractor model `pointer-hard50-seed0`) for the
+*Plan my next topics* page, and every evaluation JSON
 (see *Testing on genuinely unseen data* below for the export flags).
 
 `python -m learnpath <command> --help` lists every option with its default. When running
@@ -128,6 +132,9 @@ python -m learnpath catalogue --data data/processed/junyi --shortlist 20 \
 # the Markov shortlist ranks highest (the same shortlist the catalogue evaluation uses)
 python -m learnpath prepare --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi-hard50 \
     --negatives markov --num-candidates 50
+python -m learnpath train --data data/processed/junyi-hard50 --out runs/junyi-hard50/pointer-hard50-seed0 --batch-size 256
+python -m learnpath finetune --data data/processed/junyi-hard50 --checkpoint runs/junyi-hard50/pointer-hard50-seed0/model.pt \
+    --bkt runs/junyi/bkt/bkt_params.npz --prereq runs/junyi/prereq/prereq_graph.npz --out runs/junyi-hard50/rl-hard50-seed0
 
 # New students: fill the onboarding questionnaire in from held-out students' real histories
 # (--current: how many recently finished exercises they name; --noise: share of answers flipped)
@@ -139,14 +146,14 @@ python -m learnpath onboarding --data data/processed/junyi --content data/raw/ju
 python -m learnpath walkforward --log data/raw/junyi/Log_Problem.csv --out data/processed/junyi-wf \
     --origins 2019-01-01 2019-03-01 2019-05-01
 python -m learnpath grid --data data/processed/junyi-wf/fold-2019-03-01 --runs runs/junyi-wf/fold-2019-03-01 \
-    --variants pointer --seeds 0 --no-rl --no-gain
+    --variants pointer --seeds 0 --no-sensitivity --no-gain
 python -m learnpath walkforward-report --data data/processed/junyi-wf/fold-2019-03-01 \
     --runs runs/junyi-wf/fold-2019-03-01 --out runs/junyi-wf/report-2019-03-01.json
 ```
 
-`export --results results/junyi --shortlist-model runs/junyi-hard50/pointer-hard50-seed0/model.pt`
-adds the report and every evaluation JSON above to the app bundle, the realistic-distractor model (used on the *Plan my next topics* page), and, when `rl-seed0` exists, the RL
-policy. With `--content` it also writes `topics.json`, the strand and unit names from
+`export --results results/junyi --shortlist-model runs/junyi-hard50/rl-hard50-seed0/model.pt`
+adds the report and every evaluation JSON above to the app bundle, and the RL-fine-tuned
+realistic-distractor model used on the *Plan my next topics* page. With `--content` it also writes `topics.json`, the strand and unit names from
 `resources/junyi_topics_en.csv` that the questionnaire asks about.
 
 ## Development without the real data
@@ -212,5 +219,5 @@ The Paper lane should update these sections to match the code:
 - **New evaluation.** DKT learning gain E_p (`learnpath/dkt.py`) and the share of the BKT
   oracle's reward, alongside the ranking metrics.
 
-- **Section 5.1, batch size.** The Colab grid uses batch size 256 to keep the GPU busy; report
+- **Section 5.1, batch size.** The full grid uses batch size 256 to keep the GPU busy; report
   that value for every number that comes from it.

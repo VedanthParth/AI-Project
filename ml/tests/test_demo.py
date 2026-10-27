@@ -27,7 +27,7 @@ def bundle(tiny_log, tmp_path_factory):
         model_cfg=ModelConfig(embed_dim=16, hidden_dim=16, ff_dim=32),
         train_cfg=TrainConfig(max_epochs=1, bootstrap=0, max_history=30, batch_size=32),
         dkt_cfg=DKTConfig(hidden_dim=16, embed_dim=8, max_epochs=1),
-        rl=False,
+        sensitivity=False,
         gain=False,
         log=lambda _: None,
     )
@@ -61,6 +61,17 @@ def test_export_keeps_only_sampled_test_students(bundle):
         assert np.array_equal(np.sort(ours), np.sort(theirs))
     assert meta["metrics"]["pointer"]["ndcg"]["mean"] >= 0
     assert (out / "README.md").exists()
+
+
+def test_export_serves_only_rl_fine_tuned_policies(bundle, tmp_path):
+    _, out, meta, _ = bundle
+    root = out.parent
+    assert meta["source"]["checkpoint"] == "rl-seed0" and "supervised" in meta["metrics"]
+    assert "rl_config" in torch.load(out / "model.pt", map_location="cpu", weights_only=False)
+    with pytest.raises(ValueError, match="supervised checkpoint"):
+        export_bundle(root / "processed", root / "runs", tmp_path / "bundle", checkpoint="pointer-seed0",
+                      names_csv=root / "names.csv", log=lambda _: None)
+    assert not (tmp_path / "bundle").exists()
 
 
 def test_concept_names_come_from_the_csv_with_ucid_fallback(bundle):

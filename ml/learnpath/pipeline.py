@@ -1,11 +1,11 @@
-"""Everything the Colab notebook does, as one resumable command for a local GPU (``learnpath all``).
+"""Every experiment, as one resumable command for a local GPU (``learnpath all``).
 
     download   Junyi's CSVs into <root>/data/raw/junyi (skipped once they are there)
     prepare    the three datasets below (each skipped once prepared)
     grid       each dataset's experiment grid, skipping finished steps and resuming
                an interrupted training run from its last epoch
     report     tables and figures per dataset, into <root>/results/<dataset>
-    export     the app bundle from the main dataset's seed-0 pointer network
+    export     the app bundle from the main dataset's seed-0 pointer network after RL (rl-seed0)
 
 The main dataset is finished (grid, report, bundle) before the optional ones
 start, so its results are usable while the rest runs. Stopping the command
@@ -33,7 +33,7 @@ DATASETS: dict[str, tuple[dict, dict]] = {
     "junyi-popneg": ({"negatives": "popularity"}, {"variants": ["pointer"], "max_seeds": 3, "sensitivity": False}),
     "junyi-paper": (
         {"windows": "last", "max_students": 2000},
-        {"variants": ["pointer"], "max_seeds": 3, "rl": False, "gain": False},
+        {"variants": ["pointer"], "max_seeds": 3, "gain": False},
     ),
 }
 
@@ -123,7 +123,7 @@ def run_all(
         if name == main:
             log(f"===== {name}: app bundle")
             export_bundle(
-                data, runs, Path(bundle_dir) if bundle_dir else root / "bundle", checkpoint=f"pointer-seed{seeds[0]}",
+                data, runs, Path(bundle_dir) if bundle_dir else root / "bundle", checkpoint=f"rl-seed{seeds[0]}",
                 names_csv=Path(__file__).resolve().parents[1] / "resources" / "junyi_concepts_en.csv",
                 content_csv=content, results_dir=root / "results" / name, log=log,
             )

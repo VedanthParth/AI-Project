@@ -116,7 +116,7 @@ def train_model(
     best_score, best_epoch, best_state = -np.inf, 0, None
     history: list[dict] = []
     stopped = False
-    # An interrupted run (a Colab disconnect, a laptop going to sleep) continues from its last epoch.
+    # An interrupted run (a crash, the machine going to sleep) continues from its last epoch.
     resume_path = out / "resume.pt"
     resumed = load_resume(resume_path, rng)
     if resumed is not None:

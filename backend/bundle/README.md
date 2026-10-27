@@ -1,6 +1,6 @@
 # Maths Learning Path Recommender app bundle
 
-Exported by `learnpath export` from `junyi` and `junyi` on 2026-10-25. See `meta.json` for
+Exported by `learnpath export` from `junyi` and `junyi` on 2026-10-27. See `meta.json` for
 the exact runs and their test metrics.
 
 The student histories in `data/` are 300 test-split students from the

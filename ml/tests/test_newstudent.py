@@ -58,8 +58,8 @@ def test_plan_recommends_unseen_stage_concepts_and_explains_each_step(planner):
     seen = {h["id"] for h in plan["history"]}
     shortlist = [s["id"] for s in plan["shortlist"]]
     assert not seen & set(shortlist) and len(shortlist) == plan["pipeline"]["shortlist_size"]
-    assert {"markov", "pointer", "rl"} <= set(plan["paths"])
-    assert {"markov", "pointer", "rl", "popularity"} == set(plan["paths"])
+    assert {"markov", "pointer", "popularity"} == set(plan["paths"])
+    assert plan["pipeline"]["models"] == {"pointer": "rl-seed0"}  # the RL-fine-tuned policy, always
     for name, path in plan["paths"].items():
         assert len({c["id"] for c in path["concepts"]}) == 3
         assert not seen & {c["id"] for c in path["concepts"]}

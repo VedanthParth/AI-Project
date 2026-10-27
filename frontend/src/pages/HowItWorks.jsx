@@ -7,7 +7,7 @@ const FLOW = [
   { icon: MessageSquare, title: 'What we know about you', text: 'Your three answers, or a real practice history, and anything you practise here.', tech: 'Attempt history' },
   { icon: Brain, title: 'How well you know each topic', text: 'Every answer nudges our estimate up or down, topic by topic.', tech: 'Bayesian Knowledge Tracing' },
   { icon: ListFilter, title: 'A shortlist of what comes next', text: 'From all 1,326 exercises, the ones students usually take up after work like yours.', tech: 'Markov model of next topics' },
-  { icon: Route, title: 'The best three, in order', text: 'The recommender looks at you and the whole shortlist together, then picks one topic at a time.', tech: 'Pointer network' },
+  { icon: Route, title: 'The best three, in order', text: 'The recommender looks at you and the whole shortlist together, then picks one topic at a time.', tech: 'Pointer network, fine-tuned with RL' },
   { icon: BookOpenCheck, title: 'Your plan, with reasons', text: 'Three topics, why each one is there, and how you might progress.', tech: 'Explanations and simulated practice' },
 ];
 
@@ -21,7 +21,7 @@ const DATA = [
 const DIFFERENT = [
   ['It learns the order from real students', 'Instead of a fixed syllabus, it learned from what tens of thousands of students actually did next, and in what order.'],
   ['It respects building blocks', 'It works out which topics students almost always do first, and tries to put those before the topics that need them.'],
-  ['It can focus on learning more', 'A second version practised in a simulated classroom, where it was rewarded for topics expected to help more and for not skipping building blocks.'],
+  ['It is tuned for learning', 'After learning from real students, it practised in a simulated classroom, where it was rewarded for topics expected to help more and for not skipping building blocks.'],
   ['It explains itself', 'Every suggestion comes with a reason in plain words and a chart of what tipped the balance.'],
   ['It works for someone new', 'Three quick questions are enough to make a first plan, and it adapts as soon as you start practising.'],
 ];

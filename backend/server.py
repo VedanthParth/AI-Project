@@ -53,7 +53,6 @@ class PlanRequest(BaseModel):
 class PlanExplainRequest(PlanRequest):
     kind: str = Field("why", pattern="^(why|concept)$", description="'why' explains the plan, 'concept' teaches one topic")
     concept_id: int | None = None
-    style: str = Field("pointer", pattern="^(pointer|rl)$", description="which recommendation the page shows")
 
 
 class TutorRequest(BaseModel):
@@ -241,11 +240,10 @@ def create_app(bundle_dir: str | Path = DEFAULT_BUNDLE, frontend_dir: str | Path
             return answer(key, lambda: topic_prompt(demo, req.concept_id), lambda: concept_template(demo, req.concept_id))
         practice = [(p.concept, p.correct) for p in req.practice]
         plan = guard(planner.plan, req.stage, req.strands, req.units, req.current, practice)
-        style = req.style if req.style in plan["paths"] else "pointer"
         return answer(
             key,
-            lambda: why_prompt(planner.facts(plan, style), "you"),
-            lambda: plan_template(plan["paths"][style]["concepts"], plan["paths"]["markov"]["concepts"]),
+            lambda: why_prompt(planner.facts(plan), "you"),
+            lambda: plan_template(plan["paths"]["pointer"]["concepts"], plan["paths"]["markov"]["concepts"]),
         )
 
     if frontend_dir and Path(frontend_dir).is_dir():
